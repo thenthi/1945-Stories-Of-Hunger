@@ -193,12 +193,22 @@
   const CORNERS = { tl: [0, 0], tr: [1, 0], bl: [0, 1], br: [1, 1], t: [0.5, 0], b: [0.5, 1], l: [0, 0.5], r: [1, 0.5] };
 
   function buildStain(stain, index) {
-    const W = num(stain, '--w'), H = num(stain, '--h');
-    if (!W || !H) return;
+    const w0 = num(stain, '--w'), h0 = num(stain, '--h');
+    if (!w0 || !h0) return;
     const [cx, cy] = CORNERS[stain.dataset.corner] || CORNERS.tl;
+    // grow the box outwards past the screen edge so the blot never ends in a straight line
+    const E = 320;
+    const left = cx === 0 ? E : 0, top = cy === 0 ? E : 0;
+    const W = w0 + (cx !== 0.5 ? E : 0), H = h0 + (cy !== 0.5 ? E : 0);
+    stain.style.left = `${num(stain, '--x') - left}px`;
+    stain.style.top = `${num(stain, '--y') - top}px`;
+    stain.style.width = `${W}px`;
+    stain.style.height = `${H}px`;
+    const gx = left + cx * w0, gy = top + cy * h0;        // the original corner
+    const radius = Math.max(w0, h0) * 0.95;
     const coffee = stain.dataset.stain === 'coffee';
     const seed = 7 + index * 13;
-    const min = Math.min(W, H);
+    const min = Math.min(w0, h0);
     const id = `f${++uid}`;
     const freq = (7 / min).toFixed(4);
 
@@ -218,7 +228,8 @@
       <feComposite in="shape" in2="holes" operator="out" result="foam"/>
       <feGaussianBlur in="foam" stdDeviation="2.2" result="soft"/>
       <feFlood flood-color="#a88d70" flood-opacity=".55"/><feComposite in2="soft" operator="in" result="rim"/>
-      <feFlood flood-color="#f7f2ea"/><feComposite in2="foam" operator="in" result="white"/>
+      <feComposite in="foam" in2="SourceGraphic" operator="arithmetic" k1=".75" k2=".4" result="foamSoft"/>
+      <feFlood flood-color="#f7f2ea"/><feComposite in2="foamSoft" operator="in" result="white"/>
       <feMerge><feMergeNode in="rim"/><feMergeNode in="white"/></feMerge>`);
 
     const ring = coffee ? blob(`${id}c`, 1.45, -0.95, '', `
@@ -230,7 +241,7 @@
 
     stain.innerHTML = `<svg viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none" aria-hidden="true">
       <defs>
-        <radialGradient id="${id}g" cx="${cx}" cy="${cy}" r="1"><stop offset="0" stop-color="#fff"/><stop offset=".9" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="${id}g" gradientUnits="userSpaceOnUse" cx="${f1(gx)}" cy="${f1(gy)}" r="${f1(radius)}"><stop offset="0" stop-color="#fff"/><stop offset=".9" stop-color="#fff" stop-opacity="0"/></radialGradient>
         ${froth}${ring}
       </defs>
       ${coffee ? `<rect width="100%" height="100%" fill="url(#${id}g)" filter="url(#${id}c)"/>` : ''}

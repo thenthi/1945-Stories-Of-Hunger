@@ -206,6 +206,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .title, .kicker, .btn, .text { font-variant-numeric: lining-nums; }
 
 .title-band { padding: 45px 0; background: rgba(60, 45, 35, .45); }
+.title-band .title { white-space: nowrap; }
 
 .kicker { font-family: var(--font-title); font-size: 32px; color: var(--ink); }
 
@@ -421,6 +422,7 @@ html.is-flow .title,
 html.is-flow .cover .title { font-size: clamp(26px, 7vw, 40px); color: var(--ink); text-shadow: none; text-align: left; }
 html.is-flow .title br { display: none; }
 html.is-flow .title-band { padding: 0; background: none; }
+html.is-flow .title-band .title { white-space: normal; }
 html.is-flow .title--hero { margin: 8px 0 24px; }
 html.is-flow .kicker { font-size: 18px; }
 html.is-flow .text { font-size: 18px; line-height: 1.65; text-align: left; }
