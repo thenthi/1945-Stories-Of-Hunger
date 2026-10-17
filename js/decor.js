@@ -38,10 +38,47 @@
     return `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" rx="${f1(rx)}"`;
   }
 
+  /* ---------------------------------------------------------
+     Brush frame: no paper, the photo just fades out in dry-brush streaks
+     (horizontal + vertical noise added to a feathered rectangle, then sharpened)
+     --------------------------------------------------------- */
+  function buildBrush(photo, W, H, seed) {
+    const min = Math.min(W, H);
+    const vb = `viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none"`;
+    const id = `b${++uid}`;
+    const inset = min * 0.08;
+    const rect = `<rect x="${f1(inset)}" y="${f1(inset)}" width="${f1(W - 2 * inset)}" height="${f1(H - 2 * inset)}"`;
+    const streaks = (fid, blur, k3, k4, slope, color) => `<filter id="${fid}" x="0" y="0" width="100%" height="100%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="${f1(blur)}" result="soft"/>
+      <feTurbulence type="fractalNoise" baseFrequency="${(4 / min).toFixed(4)}" numOctaves="4" seed="${seed}" result="blot"/>
+      <feTurbulence type="fractalNoise" baseFrequency="${(1 / W).toFixed(5)} ${(30 / H).toFixed(4)}" numOctaves="3" seed="${seed + 5}" result="drag"/>
+      <feComposite in="blot" in2="drag" operator="arithmetic" k2=".55" k3=".45" result="hv"/>
+      <feColorMatrix in="hv" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0" result="na"/>
+      <feComposite in="soft" in2="na" operator="arithmetic" k2="1" k3="${k3}" k4="${k4}" result="sum"/>
+      <feComponentTransfer in="sum" result="shape"><feFuncA type="linear" slope="${slope}" intercept="0"/></feComponentTransfer>
+      <feFlood flood-color="${color}"/><feComposite in2="shape" operator="in"/>
+    </filter>`;
+
+    // where the photo shows
+    const hole = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>${streaks(id + 'h', inset * 0.9, 1.1, -1.05, 5, '#fff')}</defs>
+      ${rect} fill="#fff" filter="url(#${id}h)"/></svg>`;
+
+    // dark paint dragged over the photo's edge
+    const scorch = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
+      ${streaks(id + 's', inset * 1.6, 1.1, -0.75, 3, '#000')}
+      <mask id="${id}m"><rect width="100%" height="100%" fill="#fff"/>${rect} fill="#000" filter="url(#${id}s)"/></mask>
+    </defs><rect width="100%" height="100%" fill="#141312" mask="url(#${id}m)" opacity=".85"/></svg>`;
+
+    photo.style.setProperty('--paper', 'none');
+    photo.style.setProperty('--hole', svgUrl(hole));
+    photo.style.setProperty('--scorch', svgUrl(scorch));
+  }
+
   function buildPhoto(photo, index) {
     const W = num(photo, '--w'), H = num(photo, '--h');
     if (!W || !H) return;
     const min = Math.min(W, H);
+    if (photo.classList.contains('torn-brush')) return buildBrush(photo, W, H, 11 + index * 17);
     const kind = (photo.className.match(/torn-(a|b|c|ink)/) || [])[1] || 'a';
     const ink = kind === 'ink';
     const seed = 11 + index * 17;
