@@ -74,11 +74,39 @@
     photo.style.setProperty('--scorch', svgUrl(scorch));
   }
 
+  /* ---------------------------------------------------------
+     Ink-bleed frame: the photo spreads out into the black page in soft,
+     uneven blots, like a stain soaking through paper. A feathered rectangle
+     plus two layers of round noise, thresholded gently so the edge stays soft.
+     --------------------------------------------------------- */
+  function buildBlot(photo, W, H, seed) {
+    const min = Math.min(W, H);
+    const vb = `viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none"`;
+    const id = `l${++uid}`;
+    const inset = min * 0.12;
+    const hole = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
+      <filter id="${id}" x="0" y="0" width="100%" height="100%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="${f1(inset * 1.1)}" result="soft"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(2.5 / min).toFixed(4)}" numOctaves="3" seed="${seed}" result="big"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(10 / min).toFixed(4)}" numOctaves="4" seed="${seed + 9}" result="small"/>
+        <feComposite in="big" in2="small" operator="arithmetic" k2=".65" k3=".35" result="n"/>
+        <feColorMatrix in="n" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0" result="na"/>
+        <feComposite in="soft" in2="na" operator="arithmetic" k2="1" k3="1" k4="-.95" result="sum"/>
+        <feComponentTransfer in="sum" result="shape"><feFuncA type="linear" slope="2.6" intercept="0"/></feComponentTransfer>
+        <feFlood flood-color="#fff"/><feComposite in2="shape" operator="in"/>
+      </filter></defs>
+      <rect x="${f1(inset)}" y="${f1(inset)}" width="${f1(W - 2 * inset)}" height="${f1(H - 2 * inset)}" fill="#fff" filter="url(#${id})"/></svg>`;
+    photo.style.setProperty('--paper', 'none');
+    photo.style.setProperty('--hole', svgUrl(hole));
+    photo.style.setProperty('--scorch', 'none');
+  }
+
   function buildPhoto(photo, index) {
     const W = num(photo, '--w'), H = num(photo, '--h');
     if (!W || !H) return;
     const min = Math.min(W, H);
     if (photo.classList.contains('torn-brush')) return buildBrush(photo, W, H, 11 + index * 17);
+    if (photo.classList.contains('torn-blot')) return buildBlot(photo, W, H, 11 + index * 17);
     const kind = (photo.className.match(/torn-(a|b|c|ink)/) || [])[1] || 'a';
     const ink = kind === 'ink';
     const seed = 11 + index * 17;
@@ -126,102 +154,13 @@
   }
 
   /* ---------------------------------------------------------
-     Parchment scroll with a rolled left edge and torn teeth
+     Parchment scroll: paper images in assets/scrolls (see css .scroll).
+     Wide, short boxes get the long strip so its edges are not squashed.
      --------------------------------------------------------- */
-  function scrollPath(W, H, x0, r) {
-    const top = 16, bottom = H - 16, right = W - 4;
-    const pts = [[x0, top + 4]];
-    // top edge, left -> right, with downward teeth
-    let x = x0, nextTooth = x0 + 40 + r() * 80;
-    while (x < right - 30) {
-      x += 10 + r() * 22;
-      if (x > nextTooth) {
-        const d = 14 + r() * 22, wdt = 10 + r() * 14;
-        pts.push([x, top + r() * 4], [x + wdt * 0.55, top + d], [x + wdt, top + r() * 5]);
-        x += wdt;
-        nextTooth = x + 60 + r() * 110;
-      } else {
-        pts.push([x, top + r() * 7]);
-      }
-    }
-    pts.push([right, top + 6]);
-    // right edge, top -> bottom, small inward notches
-    let y = top + 6;
-    while (y < bottom - 40) {
-      const step = 26 + r() * 26;
-      pts.push([right - 6 - r() * 10, y + step * 0.5], [right - r() * 3, y + step]);
-      y += step;
-    }
-    pts.push([right, bottom - 6]);
-    // bottom edge, right -> left, upward teeth
-    x = right;
-    nextTooth = right - 40 - r() * 80;
-    while (x > x0 + 30) {
-      x -= 10 + r() * 22;
-      if (x < nextTooth) {
-        const d = 14 + r() * 22, wdt = 10 + r() * 14;
-        pts.push([x, bottom - r() * 4], [x - wdt * 0.55, bottom - d], [x - wdt, bottom - r() * 5]);
-        x -= wdt;
-        nextTooth = x - 60 - r() * 110;
-      } else {
-        pts.push([x, bottom - r() * 7]);
-      }
-    }
-    pts.push([x0, bottom - 4]);
-    return 'M' + pts.map((p) => `${f1(p[0])} ${f1(p[1])}`).join(' L') + ' Z';
-  }
-
-  function buildScroll(scroll, index) {
+  function buildScroll(scroll) {
     const W = num(scroll, '--w'), H = num(scroll, '--h');
-    if (!W || !H) return;
-    const dark = scroll.classList.contains('scroll--dark');
-    const r = rng(101 + index * 31);
-    const R = Math.min(64, Math.max(48, W * 0.06));       // roller width
-    const x0 = R * 0.6;
-    const d = scrollPath(W, H, x0, r);
-    const id = `s${++uid}`;
-    const c = dark
-      ? { c0: '#8f7a66', c1: '#7c6653', c2: '#5d4a3a', burn: '#3a2a1d', edge: '#2a1d13', r0: '#4a3a2d', r1: '#a08b76', r2: '#6d5a49', crack: '#2c2018' }
-      : { c0: '#f2e7cf', c1: '#e7d4b0', c2: '#c9a374', burn: '#8a5a2c', edge: '#5b3a1c', r0: '#a88a62', r1: '#f1e2c4', r2: '#c7a67a', crack: '#7a5a38' };
-
-    // a few hair-line cracks on the roller
-    let cracks = '';
-    for (let i = 0; i < 4; i++) {
-      const cy = 40 + r() * (H - 100);
-      cracks += `<path d="M${f1(R * 0.1)} ${f1(cy)} l${f1(R * 0.25)} ${f1(4 + r() * 8)} l${f1(R * 0.2)} ${f1(-3 + r() * 6)} l${f1(R * 0.3)} ${f1(6 + r() * 10)}" />`;
-    }
-
-    const svg = `<svg class="scroll__art" viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <radialGradient id="${id}p" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="${c.c0}"/><stop offset=".62" stop-color="${c.c1}"/><stop offset="1" stop-color="${c.c2}"/></radialGradient>
-        <linearGradient id="${id}r" x1="0" x2="1"><stop offset="0" stop-color="${c.r0}"/><stop offset=".38" stop-color="${c.r1}"/><stop offset=".55" stop-color="${c.r1}"/><stop offset="1" stop-color="${c.r2}"/></linearGradient>
-        <clipPath id="${id}c"><path d="${d}"/></clipPath>
-        <filter id="${id}b" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="9"/></filter>
-        <filter id="${id}b2" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="2.5"/></filter>
-        <filter id="${id}g"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="3" seed="${index + 3}"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 ${dark ? '.3' : '.28'} 0"/></filter>
-        <filter id="${id}m"><feTurbulence type="fractalNoise" baseFrequency=".004 .02" numOctaves="3" seed="${index + 9}"/><feColorMatrix values="0 0 0 0 .25 0 0 0 0 .16 0 0 0 0 .08 0 0 0 .9 -.35"/></filter>
-      </defs>
-      <path d="${d}" fill="url(#${id}p)"/>
-      <g clip-path="url(#${id}c)">
-        <rect width="100%" height="100%" filter="url(#${id}m)" opacity=".5"/>
-        <rect width="100%" height="100%" filter="url(#${id}g)"/>
-        <path d="${d}" fill="none" stroke="${c.burn}" stroke-width="34" filter="url(#${id}b)" opacity=".8"/>
-        <path d="${d}" fill="none" stroke="${c.edge}" stroke-width="6" filter="url(#${id}b2)" opacity=".8"/>
-      </g>
-      <path d="${d}" fill="none" stroke="${c.edge}" stroke-width="1.2" opacity=".6"/>
-      <!-- roller -->
-      <rect x="${f1(R * 0.62)}" y="10" width="10" height="${f1(H - 34)}" fill="#000" opacity=".18" filter="url(#${id}b2)"/>
-      <rect x="0" y="8" width="${f1(R)}" height="${f1(H - 30)}" fill="url(#${id}r)" stroke="${c.edge}" stroke-width="1.3"/>
-      <g fill="none" stroke="${c.crack}" stroke-width="1" opacity=".55">${cracks}</g>
-      <ellipse cx="${f1(R / 2)}" cy="9" rx="${f1(R / 2)}" ry="6" fill="${c.r1}" stroke="${c.edge}" stroke-width="1.3"/>
-      <ellipse cx="${f1(R / 2)}" cy="${f1(H - 20)}" rx="${f1(R / 2 + 3)}" ry="13" fill="url(#${id}r)" stroke="${c.edge}" stroke-width="1.3"/>
-      <ellipse cx="${f1(R / 2 + 1)}" cy="${f1(H - 18)}" rx="${f1(R / 2 - 6)}" ry="8" fill="none" stroke="${c.edge}" stroke-width="1.1"/>
-      <ellipse cx="${f1(R / 2 + 2)}" cy="${f1(H - 16)}" rx="${f1(R / 2 - 14)}" ry="4.5" fill="none" stroke="${c.edge}" stroke-width="1"/>
-    </svg>`;
-
     scroll.querySelector('.scroll__roll')?.remove();
-    scroll.insertAdjacentHTML('afterbegin', svg);
-    scroll.style.setProperty('--roll', `${f1(R)}px`);
+    if (W && H) scroll.classList.toggle('scroll--wide', W / H >= 2.5);
   }
 
   /* ---------------------------------------------------------

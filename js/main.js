@@ -35,6 +35,55 @@
     img.addEventListener('error', mark);
   });
 
+  /* ---------- Mouse parallax: photos drift after the pointer ----------
+     The pointer position (-1..1 from the centre) is eased into --mx / --my;
+     each photo moves by its own --depth, so a circling mouse circles the photos. */
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll('.slide').forEach((slide) =>
+    slide.querySelectorAll('.photo').forEach((p, i) => p.style.setProperty('--depth', [1, 0.6, 1.4][i % 3])));
+  let tx = 0, ty = 0, mx = 0, my = 0, raf = 0;
+  function drift() {
+    mx += (tx - mx) * 0.08;
+    my += (ty - my) * 0.08;
+    root.style.setProperty('--mx', mx.toFixed(4));
+    root.style.setProperty('--my', my.toFixed(4));
+    raf = Math.abs(tx - mx) + Math.abs(ty - my) > 0.0005 ? requestAnimationFrame(drift) : 0;
+  }
+  function aim(x, y) {
+    tx = x;
+    ty = y;
+    if (!raf) raf = requestAnimationFrame(drift);
+  }
+  window.addEventListener('mousemove', (e) => {
+    if (isFlow() || still.matches) return;
+    aim(e.clientX / window.innerWidth * 2 - 1, e.clientY / window.innerHeight * 2 - 1);
+  });
+  document.addEventListener('mouseleave', () => aim(0, 0));
+
+  /* ---------- Words: wrap each word so the text can rise in word by word ---------- */
+  const TEXT = '.title, .kicker, .panel__year, .panel__date, .panel__title, .text p, .panel__text p, .scroll__paper p';
+  document.querySelectorAll(TEXT).forEach((block) => {
+    if (block.closest('.w-done')) return;
+    block.classList.add('w-done');
+    let i = 0;
+    const walk = (node) => Array.from(node.childNodes).forEach((n) => {
+      if (n.nodeType === 1) return walk(n);
+      if (n.nodeType !== 3 || !n.textContent.trim()) return;
+      const frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) return frag.appendChild(document.createTextNode(part));
+        const w = document.createElement('span');
+        w.className = 'w';
+        w.style.setProperty('--i', i++);
+        w.textContent = part;
+        frag.appendChild(w);
+      });
+      n.replaceWith(frag);
+    });
+    walk(block);
+  });
+
   /* ---------- Milestone dots ---------- */
   const milestones = [];
   sections.forEach((s, i) => {
@@ -49,6 +98,47 @@
     milestones.push({ index: i, el: b });
   });
 
+  /* ---------- Timeline roll: between two stories the milestones scroll past in one continuous
+     run (fast, then slowing down) and settle on the new story's topic, like the year column of
+     the UN Women timeline. Only then do the story's pictures come in. ---------- */
+  const ROLL = 4200;                   // ms until the new story's content starts to appear
+  const COPIES = 5;                    // the list repeats so every roll passes several milestones
+  const RUN = 12;                      // at least this many milestones go by
+  const topics = milestones.map((m) => {
+    const title = sections[m.index].querySelector('.cover .title, .title');
+    const text = title ? title.textContent.replace(/\s+/g, ' ').trim() : '';
+    return { date: sections[m.index].dataset.label, topic: text.includes(':') ? text.split(':').pop().trim() : text };
+  });
+  const timeline = document.createElement('div');
+  timeline.className = 'timeline';
+  timeline.setAttribute('aria-hidden', 'true');
+  timeline.innerHTML = `<div class="timeline__track">${Array.from({ length: COPIES }, () => topics.map((t) =>
+    `<div class="timeline__item"><span class="timeline__date">${t.date}</span><span class="timeline__topic">${t.topic}</span></div>`
+  ).join('')).join('')}</div>`;
+  document.querySelector('.ui-stage').appendChild(timeline);
+  const items = Array.from(timeline.querySelectorAll('.timeline__item'));
+  const msIndex = (i) => milestones.findIndex((m) => m.index === i);
+  let rollTimers = [];
+
+  function roll(from, to, onDone) {
+    const n = milestones.length;
+    const target = 2 * n + to;                               // stop in the middle copy
+    const dist = Math.min(2 * n, Math.max(RUN, Math.abs(to - from)));
+    const start = target + (to >= from ? -dist : dist);
+    rollTimers.forEach(clearTimeout);
+    items.forEach((it) => it.classList.remove('is-current'));
+    timeline.classList.remove('is-rolling');
+    timeline.style.setProperty('--at', start);
+    void timeline.offsetHeight;        // jump to the start without animating
+    timeline.classList.add('is-on');
+    root.classList.add('is-rolling');
+    rollTimers = [
+      setTimeout(() => { timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),
+      setTimeout(() => items[target].classList.add('is-current'), 3600),
+      setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, ROLL),
+    ];
+  }
+
   /* ---------- Layout ---------- */
   function scaleStage() {
     const s = Math.min(window.innerWidth / DESIGN_W, window.innerHeight / DESIGN_H);
@@ -61,30 +151,54 @@
     else render(sec, sl, sec, true);
   }
 
-  /* ---------- Rendering ---------- */
+  /* ---------- Rendering ----------
+     Like the UN Women timeline: the screen never slides as a whole. Sections and
+     slides sit on top of each other; the outgoing content drifts away and fades
+     while the incoming photos drift in from the direction you are travelling
+     (set on <html data-dir>) and the words of the text rise in one by one. */
+  let leaveTimer = 0;
   function render(toSec, toSl, fromSec, instant) {
-    sections.forEach((s, i) => {
-      const moving = i === toSec || i === fromSec;
-      if (instant || !moving) s.classList.add('no-anim');
-      s.classList.toggle('is-active', i === toSec);
-      s.classList.toggle('is-past', i < toSec);
-      s.classList.toggle('is-future', i > toSec);
-    });
+    const fromSlide = slidesOf[sec][sl];
+    const toSlide = slidesOf[toSec][toSl];
 
-    // a section entered vertically shows the right slide immediately
-    const track = sections[toSec].querySelector('.track');
-    if (toSec !== fromSec || instant) track.classList.add('no-anim');
-    track.style.transform = `translateX(${-toSl * 100}%)`;
+    if (instant) {
+      document.querySelectorAll('.section, .slide').forEach((el) => el.classList.add('no-anim'));
+    } else {
+      root.dataset.dir = toSec > fromSec ? 'down' : toSec < fromSec ? 'up' : toSl > sl ? 'right' : 'left';
+      void document.body.offsetHeight;   // incoming photos take their start offset before they move
+      clearTimeout(leaveTimer);
+      document.querySelectorAll('.is-leaving').forEach((el) => el.classList.remove('is-leaving'));
+      if (fromSlide !== toSlide) {
+        fromSlide.classList.add('is-leaving');
+        if (fromSec !== toSec) sections[fromSec].classList.add('is-leaving');
+        leaveTimer = setTimeout(() =>
+          document.querySelectorAll('.is-leaving').forEach((el) => el.classList.remove('is-leaving')), DURATION + 200);
+      }
+    }
 
+    // moving to another story: roll the timeline first, show the slide afterwards
+    const to = msIndex(toSec);
+    const rolling = !instant && toSec !== fromSec && to >= 0 && !still.matches;
+    let wait = DURATION;
+    if (rolling) {
+      const from = msIndex(fromSec) >= 0 ? msIndex(fromSec) : to + (toSec > fromSec ? -1 : 1);
+      roll(from, to, () => toSlide.classList.add('is-active'));
+      wait = ROLL + 600;
+    }
+
+    sections.forEach((s, i) => s.classList.toggle('is-active', i === toSec));
     slidesOf.forEach((list, i) => list.forEach((slide, j) =>
-      slide.classList.toggle('is-active', i === toSec && j === toSl)));
+      slide.classList.toggle('is-active', !rolling && i === toSec && j === toSl)));
 
-    void document.body.offsetHeight;   // apply the instant changes before re-enabling transitions
-    document.querySelectorAll('.no-anim').forEach((el) => el.classList.remove('no-anim'));
+    if (instant) {
+      void document.body.offsetHeight;   // apply the instant changes before re-enabling transitions
+      document.querySelectorAll('.no-anim').forEach((el) => el.classList.remove('no-anim'));
+    }
 
     sec = toSec;
     sl = toSl;
     updateUI();
+    return wait;
   }
 
   function updateUI() {
@@ -116,8 +230,8 @@
     toSl = Math.max(0, Math.min(slidesOf[toSec].length - 1, toSl));
     if ((toSec === sec && toSl === sl) || locked) return;
     locked = true;
-    render(toSec, toSl, sec, false);
-    setTimeout(() => { locked = false; }, DURATION + 150);
+    const wait = render(toSec, toSl, sec, false);
+    setTimeout(() => { locked = false; }, wait + 150);
   }
 
   function next() {

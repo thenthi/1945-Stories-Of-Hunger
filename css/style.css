@@ -28,7 +28,7 @@
 
 html, body {
   height: 100%;
-  background: #3a2f28;
+  background: #121212;
   color: #fff;
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -36,39 +36,44 @@ html, body {
 html:not(.is-flow), html:not(.is-flow) body { overflow: hidden; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 
-/* ---------- Paper backgrounds (cover the whole viewport) ---------- */
-.paper-light { background: var(--wash), var(--stains), var(--grain), linear-gradient(90deg, transparent 50%, rgba(150, 112, 74, .35) 90%), radial-gradient(ellipse at 30% 40%, #f4ede0 0%, #e6dbc8 55%, #cdbb9f 100%); }
-.paper       { background: var(--wash), var(--stains), var(--grain), radial-gradient(ellipse at 45% 45%, #ddd2c1 0%, #c9bba6 60%, #ad9a80 100%); }
-.paper-dark  { background: var(--wash), var(--stains), var(--grain), radial-gradient(ellipse at 50% 45%, #b8a790 0%, #a08c72 60%, #82705a 100%); }
-.paper-charcoal { background: var(--grain), radial-gradient(ellipse at 22% 50%, #3a3836 0%, #232221 45%, #121211 100%); background-size: 260px 260px, cover; }
-.paper, .paper-dark { background-size: 100% 100%, 100% 100%, 260px 260px, cover; }
-.paper-light { background-size: 100% 100%, 100% 100%, 260px 260px, 100% 100%, cover; }
+/* ---------- Background: charcoal, grey patches fading into black at the edges ----------
+   cloudy smudges (noise) + film grain over a grey-to-black vignette; the photos bleed into it. */
+:root {
+  --smudge: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' preserveAspectRatio='none'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0022 .0035' numOctaves='5' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .62 0 0 0 0 .62 0 0 0 0 .6 0 0 0 1.1 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+  --grain-grey: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.paper-light, .paper, .paper-dark, .paper-charcoal {
+  background:
+    var(--grain-grey),
+    var(--smudge),
+    radial-gradient(ellipse 75% 70% at 45% 48%, #4a4846 0%, #2c2b2a 45%, #151414 80%, #090909 100%);
+  background-size: 260px 260px, 100% 100%, cover;
+}
 
-/* ---------- Sections (vertical) & slides (horizontal) ---------- */
+/* ---------- Sections & slides: stacked in place, content changes (UN Women timeline style) ----------
+   Nothing slides as a whole screen. The incoming section/slide fades in on top while the
+   outgoing one (.is-leaving) stays underneath while its content fades out. Photos never move. */
 .deck { position: fixed; inset: 0; }
 
-.section {
+.section, .slide {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  transition: transform var(--dur) var(--ease);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .9s ease, visibility 0s .9s;
 }
-.section.is-past   { transform: translateY(-100%); }
-.section.is-future { transform: translateY(100%); }
-.section.is-active { transform: none; z-index: 2; }
-
-.track {
-  display: flex;
-  height: 100%;
-  transition: transform var(--dur) var(--ease);
+.section.is-active, .slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  z-index: 2;
+  transition: opacity 1s ease .2s, visibility 0s;
 }
-.slide {
-  position: relative;
-  flex: 0 0 100%;
-  height: 100%;
-  overflow: hidden;
-}
+.section.is-leaving { opacity: 1; visibility: visible; z-index: 1; transition: none; }   /* keeps its paper under the new one */
+.slide.is-leaving { visibility: visible; z-index: 1; }                                     /* fades out (opacity 0) */
+.track { position: absolute; inset: 0; }
 .no-anim, .no-anim * { transition: none !important; }
+
 
 .stage {
   position: absolute;
@@ -89,7 +94,19 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .photo, .scroll, .card { height: calc(var(--h) * 1px); }
 
 /* ---------- Torn & burnt photo frames (shapes drawn by js/decor.js) ---------- */
-.photo { margin: 0; transition: opacity .8s ease; }
+.photo {
+  margin: 0;
+  transform: none !important;  /* photos stand still: they only fade (and unblur) in and out */
+  transition: opacity .8s ease, filter .5s ease;
+}
+.slide.is-leaving .photo {
+  transition: filter .5s ease;
+}
+/* mouse parallax (values set by js/main.js); titles sit on a shallower layer than photos */
+.photo, .title, .panel__year, .panel__title {
+  translate: calc(var(--mx, 0) * var(--depth, 1) * 30px) calc(var(--my, 0) * var(--depth, 1) * 30px);
+}
+.title, .panel__year, .panel__title { --depth: .5; }
 .photo__paper {
   position: relative;
   width: 100%;
@@ -120,13 +137,49 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   pointer-events: none;
 }
 /* brush frame: black & white photo, no paper, dark paint over the edges */
-.torn-brush .photo__paper { filter: none; }
-.torn-brush img { filter: grayscale(1) contrast(1.15) brightness(.95); }
-.torn-brush .photo__paper::after {
-  mix-blend-mode: normal;
+/* the brush mask sits on the box, the photo zooms inside it past the burnt paper frame baked into the image */
+.torn-brush .photo__paper {
+  filter: none;
+  overflow: hidden;
   -webkit-mask: var(--hole) center / 100% 100% no-repeat;
           mask: var(--hole) center / 100% 100% no-repeat;
 }
+.torn-brush img {
+  filter: grayscale(1) contrast(1.15) brightness(.95);
+  scale: 1.32;
+  -webkit-mask: none;
+          mask: none;
+}
+.torn-brush .photo__paper::after { mix-blend-mode: normal; }
+
+/* ink-bleed photo (mask drawn by js/decor.js): the edge spreads into the black page in soft blots.
+   The photo zooms inside its box so the burnt paper frame baked into the image falls outside. */
+.torn-blot .photo__paper {
+  background: none;
+  filter: none;
+  overflow: hidden;
+  -webkit-mask: var(--hole) center / 100% 100% no-repeat;
+          mask: var(--hole) center / 100% 100% no-repeat;
+}
+.torn-blot img {
+  filter: contrast(1.05);
+  scale: 1.3;
+  -webkit-mask: none;
+          mask: none;
+}
+.torn-blot .photo__paper::after { content: none; }
+
+/* ---------- Gentle reveal: photos arrive blurred, then come into focus ----------
+   so the audience is not hit by a harrowing image at once.
+   .is-heavy (bodies, starving children) stays blurred longer and starts stronger. */
+.photo { --blur: 12px; filter: blur(var(--blur)); }
+.photo.is-heavy { --blur: 28px; }
+.section[data-anchor="intro"] .photo { --blur: 0px; }
+.slide.is-active .photo {
+  filter: none;
+  transition: opacity .9s ease .55s, filter 2.4s ease 1s;
+}
+.slide.is-active .photo.is-heavy { transition: opacity .9s ease .55s, filter 3.5s ease 2.2s; }
 
 .photo.is-dim   { opacity: .4; }
 .photo.is-faded { opacity: .55; }
@@ -146,14 +199,25 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
     linear-gradient(160deg, #75665a, #40362e);
 }
 
-/* ---------- Parchment scroll (art drawn by js/decor.js) ---------- */
-.scroll { --roll: 56px; }
-.scroll__art {
+/* ---------- Parchment scroll (paper images in assets/scrolls) ----------
+   9-slice: the roller (left) and the torn edges keep their size, only the middle stretches.
+   Slice numbers are pixels of the source image; widths are how big they are drawn. */
+.scroll {
+  --roll: 62px;
+  --img: url("../assets/scrolls/scroll-light.png");
+  --slice: 34 26 34 100;
+  --edge: 22px 16px 22px var(--roll);
+}
+.scroll--dark { --img: url("../assets/scrolls/scroll-dark.png"); }
+.scroll--wide { --img: url("../assets/scrolls/scroll-light-wide.png"); --slice: 30 22 30 66; --edge: 30px 20px 30px var(--roll); }
+.scroll--wide.scroll--dark { --img: url("../assets/scrolls/scroll-dark-wide.png"); }
+.scroll::before {
+  content: "";
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  border-style: solid;
+  border-width: var(--edge);
+  border-image: var(--img) var(--slice) fill / var(--edge) stretch;
   filter: drop-shadow(0 8px 14px rgba(40, 25, 15, .3));
 }
 .scroll__paper {
@@ -164,11 +228,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   flex-direction: column;
   justify-content: center;
 }
-.scroll--light .text { color: var(--ink-soft); }
+.scroll--light .text { color: var(--ink-soft); text-shadow: none; }
 .scroll--dark .text { color: #fbf6ee; text-shadow: 0 1px 2px rgba(30, 20, 12, .35); }
 
 /* ---------- Froth & coffee stains (drawn by js/decor.js) ---------- */
 .stain {
+  display: none;               /* white froth was made for the old light paper; off on the dark texture */
   position: absolute;
   left: calc(var(--x) * 1px);
   top: calc(var(--y) * 1px);
@@ -209,7 +274,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   letter-spacing: .005em;
   text-shadow: 0 2px 18px rgba(40, 28, 20, .45);
 }
-.title.dark { color: var(--ink); text-shadow: none; }
+.title.dark { color: #f3ebe1; }   /* the paper texture is dark now, so 'dark' titles turn light too */
 .title--hero { font-size: 72px; line-height: 1.22; margin: 50px 0 54px; }
 .cover .title { font-size: 70px; }
 .center { text-align: center; }
@@ -218,12 +283,13 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .title-band { padding: 45px 0; background: rgba(60, 45, 35, .45); }
 .title-band .title { white-space: nowrap; }
 
-.kicker { font-family: var(--font-title); font-size: 32px; color: var(--ink); }
+.kicker { font-family: var(--font-title); font-size: 32px; color: #e9dcc6; }
 
 .text {
   font-size: 27.5px;
   line-height: 37.5px;
   color: #fff;
+  text-shadow: 0 1px 3px rgba(10, 6, 3, .9), 0 0 16px rgba(10, 6, 3, .6);
   text-align: justify;
 }
 .text.center { text-align: center; }
@@ -245,10 +311,27 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn:hover span { transform: translateX(5px); }
 
 /* ---------- Date panel (year, date, text, title) beside a brush-framed photo ---------- */
-.panel { color: #f1eee9; text-align: center; }
+/* a soft dark pool behind the text column keeps it readable on the busy background */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 8% -18%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(16, 11, 7, .72), rgba(16, 11, 7, .45) 60%, transparent);
+}
+.panel {
+  isolation: isolate;
+  height: calc(var(--h) * 1px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #f1eee9;
+  text-align: center;
+}
 .panel__year {
   font-family: var(--font-title);
-  font-size: 118px;
+  font-size: 104px;
   line-height: 1;
   letter-spacing: .04em;
 }
@@ -272,13 +355,15 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   text-transform: uppercase;
 }
 .panel__text {
-  margin-top: 40px;
-  font-size: 24px;
-  line-height: 1.5;
+  text-shadow: 0 1px 3px rgba(10, 6, 3, .9);
+  margin-top: 34px;
+  font-size: 23px;
+  line-height: 1.45;
   text-align: center;
   color: rgba(241, 238, 233, .88);
 }
-.panel__dots { margin: 40px 0 26px; font-size: 22px; letter-spacing: .6em; color: rgba(241, 238, 233, .7); }
+.panel__text p + p { margin-top: .6em; }
+.panel__dots { margin: 30px 0 20px; font-size: 22px; letter-spacing: .6em; color: rgba(241, 238, 233, .7); }
 .panel__title {
   font-family: var(--font-title);
   font-size: 54px;
@@ -288,7 +373,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   text-shadow: 0 2px 14px rgba(0, 0, 0, .6);
 }
 
-.ornament { position: absolute; width: 360px; height: 340px; color: #3b2f27; }
+.ornament { position: absolute; width: 360px; height: 340px; color: #d9c7a8; opacity: .8; }
 .ornament--top { left: 6px; top: 6px; }
 .ornament--bottom { left: 6px; bottom: 6px; transform: scaleY(-1); }
 
@@ -304,12 +389,35 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .slide.is-active [data-anim] ~ [data-anim] ~ [data-anim] ~ [data-anim] { transition-delay: 1.15s; }
 .slide.is-active .layer > [data-anim]:nth-child(2) { transition-delay: .7s; }
 .slide.is-active .layer > [data-anim]:nth-child(3) { transition-delay: .85s; }
+.photo[data-anim] { opacity: 0; }
+.slide.is-active .photo[data-anim] { opacity: 1; }
 .photo.is-dim[data-anim] { opacity: 0; }
 .slide.is-active .photo.is-dim[data-anim] { opacity: .38; }
 
-/* photos drift slowly while their slide is shown */
-.slide.is-active .photo:not(.photo--archive) img { animation: drift 10s ease-out both; }
-@keyframes drift { from { transform: scale(1.06); } to { transform: scale(1); } }
+/* words rise in one by one (spans made by js/main.js); a long paragraph caps its wave at ~1.6s */
+.w {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(.45em);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.slide.is-active .w {
+  opacity: 1;
+  transform: none;
+  transition: opacity .7s ease, transform .9s cubic-bezier(.2, .7, .2, 1);
+  transition-delay: calc(.7s + min(var(--i) * 22ms, 1.6s));
+}
+/* titles flip up out of the page, like the UN Women headings */
+.title .w, .panel__year .w, .panel__title .w {
+  transform: perspective(600px) rotateX(70deg) translateY(.3em);
+  transform-origin: 50% 100%;
+}
+.slide.is-active .title .w, .slide.is-active .panel__year .w, .slide.is-active .panel__title .w {
+  transform: none;
+  transition-delay: calc(.45s + var(--i) * 90ms);
+}
+.slide.is-leaving .w { opacity: 0; transition: opacity .4s ease; }
+
 
 /* cover titles open up from slightly larger and letter-spaced */
 .cover [data-anim] {
@@ -335,11 +443,11 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .dots {
   position: absolute;
   right: 60px;
-  top: 435px;
+  top: 360px;                 /* 7 dots × 36px + 6 gaps × 24px, centred on the 1125px stage */
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
+  gap: 24px;
   opacity: 0;
   transform: translateX(30px);
   transition: opacity .6s, transform .6s var(--ease);
@@ -441,19 +549,74 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .next.is-hidden { opacity: 0; pointer-events: none; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
 
+/* ---------- Timeline roll between stories (built by js/main.js) ---------- */
+.timeline {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity .5s ease;
+  -webkit-mask: linear-gradient(transparent 8%, #000 30%, #000 70%, transparent 92%);
+          mask: linear-gradient(transparent 8%, #000 30%, #000 70%, transparent 92%);
+}
+.timeline.is-on { opacity: 1; }
+.timeline__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 432px;                                        /* centre of the 1125px stage minus half an item */
+  transform: translateY(calc(var(--at, 0) * -260px));
+}
+/* one continuous run: starts fast, slows down and settles on the topic */
+.timeline.is-rolling .timeline__track { transition: transform 3.6s cubic-bezier(.12, .6, .15, 1); }
+.timeline__item {
+  position: relative;
+  height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  white-space: nowrap;
+  color: #f3ebe1;
+  text-shadow: 0 2px 14px rgba(20, 12, 6, .55);
+  opacity: .28;
+  transform: scale(.6);
+  transition: opacity .6s ease, transform .9s var(--ease);
+}
+.timeline__date { font-size: 34px; letter-spacing: .12em; text-transform: uppercase; }
+.timeline__topic { font-family: var(--font-title); font-size: 96px; line-height: 1; text-transform: uppercase; }
+.timeline__item::after {                            /* short tick between milestones */
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  width: 1.5px;
+  height: 36px;
+  background: currentColor;
+  opacity: .5;
+}
+.timeline__item.is-current .timeline__topic { text-shadow: 0 2px 22px rgba(20, 12, 6, .7); }
+.timeline__item.is-current { opacity: 1; transform: none; }
+.is-rolling .pager, .is-rolling .next { opacity: 0 !important; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
+  .slide.is-active .photo, .slide.is-active .photo.is-heavy { transition-duration: .01s; }
+  .photo, .title, .panel__year, .panel__title { translate: none; }
   :root { --dur: .01s; }
   .slide.is-active .photo img, .next { animation: none; }
   [data-anim] { transition: opacity .3s !important; transform: none !important; }
+  .photo, .slide.is-leaving .photo, .w { transform: none !important; }
+  .slide.is-active .w { transition-delay: .3s; }
 }
 
 /* =========================================================
    Flow mode (phones, portrait tablets): normal vertical scrolling
    ========================================================= */
 html.is-flow .deck { position: static; }
+html.is-flow .section, html.is-flow .slide { opacity: 1; visibility: visible; }
 html.is-flow .section { position: relative; inset: auto; transform: none !important; overflow: visible; padding: 8px 0 40px; }
-html.is-flow .track { display: block; transform: none !important; }
-html.is-flow .slide { overflow: visible; }
+html.is-flow .track { position: static; display: block; transform: none !important; }
+html.is-flow .slide { position: relative; inset: auto; overflow: visible; }
 html.is-flow .ui { display: none; }
 html.is-flow .stage {
   position: static;
@@ -470,18 +633,19 @@ html.is-flow .layer,
 html.is-flow .photo,
 html.is-flow .scroll,
 html.is-flow .card { position: relative; left: auto; top: auto; width: auto; height: auto; }
-html.is-flow .photo { aspect-ratio: 4 / 3; opacity: 1; }
+html.is-flow .photo { aspect-ratio: 4 / 3; opacity: 1; transform: none; }
+html.is-flow .photo, html.is-flow .title, html.is-flow .panel__year, html.is-flow .panel__title { translate: none; }
 html.is-flow [data-flow-hide], html.is-flow .ornament { display: none; }
 html.is-flow .title,
-html.is-flow .cover .title { font-size: clamp(26px, 7vw, 40px); color: var(--ink); text-shadow: none; text-align: left; }
+html.is-flow .cover .title { font-size: clamp(26px, 7vw, 40px); color: #f3ebe1; text-align: left; }
 html.is-flow .title br { display: none; }
 html.is-flow .title-band { padding: 0; background: none; }
 html.is-flow .title-band .title { white-space: normal; }
 html.is-flow .title--hero { margin: 8px 0 24px; }
 html.is-flow .kicker { font-size: 18px; }
 html.is-flow .text { font-size: 18px; line-height: 1.65; text-align: left; }
-html.is-flow .paper-dark .text { color: var(--ink-soft); }
 html.is-flow .text p + p { margin-top: .6em; }
+html.is-flow .panel { height: auto; }
 html.is-flow .panel__year { font-size: clamp(48px, 14vw, 72px); }
 html.is-flow .panel__year::before, html.is-flow .panel__year::after { width: 20px; height: 4px; margin: 0 14px; }
 html.is-flow .panel__date { font-size: 15px; padding: 0 24px 10px; }
@@ -493,4 +657,5 @@ html.is-flow .stain { display: none; }
 html.is-flow .card { padding: 32px 22px; border-radius: 24px; }
 html.is-flow .card .text { color: #fff; }
 html.is-flow .btn { height: 52px; font-size: 18px; }
+html.is-flow .w { opacity: 1; transform: none; }
 html.is-flow [data-anim] { opacity: 1 !important; transform: none !important; letter-spacing: normal !important; }
