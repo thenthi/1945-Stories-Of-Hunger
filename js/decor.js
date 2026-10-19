@@ -75,38 +75,62 @@
   }
 
   /* ---------------------------------------------------------
-     Ink-bleed frame: the photo spreads out into the black page in soft,
-     uneven blots, like a stain soaking through paper. A feathered rectangle
-     plus two layers of round noise, thresholded gently so the edge stays soft.
+     Burnt paper frame (.photo--fill), matching the frames baked into the photos:
+     a wide cream border with big lumpy tears and dark specks, a thin burnt line on
+     the outside and a soft brown scorch halo around the picture.
      --------------------------------------------------------- */
-  function buildBlot(photo, W, H, seed) {
+  function buildBurnt(photo, W, H, seed) {
     const min = Math.min(W, H);
+    const wobble = 0.12, fibre = 0.012;
+    const pad = min * (wobble / 2 + fibre / 2) + 4;
+    const border = min * 0.09;
     const vb = `viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none"`;
-    const id = `l${++uid}`;
-    const inset = min * 0.12;
-    const hole = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
-      <filter id="${id}" x="0" y="0" width="100%" height="100%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="${f1(inset * 1.1)}" result="soft"/>
-        <feTurbulence type="fractalNoise" baseFrequency="${(2.5 / min).toFixed(4)}" numOctaves="3" seed="${seed}" result="big"/>
-        <feTurbulence type="fractalNoise" baseFrequency="${(10 / min).toFixed(4)}" numOctaves="4" seed="${seed + 9}" result="small"/>
-        <feComposite in="big" in2="small" operator="arithmetic" k2=".65" k3=".35" result="n"/>
-        <feColorMatrix in="n" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0" result="na"/>
-        <feComposite in="soft" in2="na" operator="arithmetic" k2="1" k3="1" k4="-.95" result="sum"/>
-        <feComponentTransfer in="sum" result="shape"><feFuncA type="linear" slope="2.6" intercept="0"/></feComponentTransfer>
-        <feFlood flood-color="#fff"/><feComposite in2="shape" operator="in"/>
-      </filter></defs>
-      <rect x="${f1(inset)}" y="${f1(inset)}" width="${f1(W - 2 * inset)}" height="${f1(H - 2 * inset)}" fill="#fff" filter="url(#${id})"/></svg>`;
-    photo.style.setProperty('--paper', 'none');
+    const id = `p${++uid}`;
+    const outer = shape('c', pad, pad, W - 2 * pad, H - 2 * pad, min);
+    const inner = shape('c', pad + border, pad + border, W - 2 * (pad + border), H - 2 * (pad + border), min);
+
+    const paper = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
+      ${tornFilter(id + 'o', seed, min, wobble, fibre)}
+      <filter id="${id}b" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${f1(min * 0.004)}"/></filter>
+      <filter id="${id}m"><feTurbulence type="fractalNoise" baseFrequency="${(5 / min).toFixed(4)}" numOctaves="3" seed="${seed + 1}"/><feColorMatrix values="0 0 0 0 .62 0 0 0 0 .5 0 0 0 0 .34 0 0 0 .9 -.35"/></filter>
+      <filter id="${id}d"><feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="${seed + 2}"/><feColorMatrix values="0 0 0 0 .3 0 0 0 0 .22 0 0 0 0 .14 0 0 0 9 -6.3"/></filter>
+      <filter id="${id}g"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="${seed}"/><feColorMatrix values="0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .18 0"/></filter>
+      <clipPath id="${id}c">${outer}/></clipPath>
+    </defs>
+    <g filter="url(#${id}o)">
+      ${outer} fill="#efe8da"/>
+      <g clip-path="url(#${id}c)">
+        <rect width="100%" height="100%" filter="url(#${id}m)" opacity=".55"/>
+        <rect width="100%" height="100%" filter="url(#${id}d)" opacity=".7"/>
+        <rect width="100%" height="100%" filter="url(#${id}g)"/>
+      </g>
+      ${outer} fill="none" stroke="#a87c52" stroke-width="${f1(min * 0.009)}" filter="url(#${id}b)" opacity=".5"/>
+    </g></svg>`;
+
+    const hole = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>${tornFilter(id + 'i', seed + 3, min, wobble * 0.9, fibre)}</defs>
+      <g filter="url(#${id}i)">${inner} fill="#fff"/></g></svg>`;
+
+    const scorch = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
+      ${tornFilter(id + 's', seed + 3, min, wobble * 0.9, fibre)}
+      <filter id="${id}h" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${f1(min * 0.022)}"/></filter>
+      <filter id="${id}l" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${f1(min * 0.003)}"/></filter>
+    </defs><g filter="url(#${id}s)">
+      ${inner} fill="none" stroke="#b08050" stroke-width="${f1(min * 0.07)}" filter="url(#${id}h)" opacity=".7"/>
+      ${inner} fill="none" stroke="#6e4520" stroke-width="${f1(min * 0.008)}" filter="url(#${id}l)" opacity=".55"/>
+    </g></svg>`;
+
+    photo.style.setProperty('--paper', svgUrl(paper));
     photo.style.setProperty('--hole', svgUrl(hole));
-    photo.style.setProperty('--scorch', 'none');
+    photo.style.setProperty('--scorch', svgUrl(scorch));
   }
 
   function buildPhoto(photo, index) {
     const W = num(photo, '--w'), H = num(photo, '--h');
     if (!W || !H) return;
     const min = Math.min(W, H);
+    if (photo.classList.contains('photo--framed')) return;    // frame is already in the image
     if (photo.classList.contains('torn-brush')) return buildBrush(photo, W, H, 11 + index * 17);
-    if (photo.classList.contains('torn-blot')) return buildBlot(photo, W, H, 11 + index * 17);
+    if (photo.classList.contains('photo--fill')) return buildBurnt(photo, W, H, 11 + index * 17);
     const kind = (photo.className.match(/torn-(a|b|c|ink)/) || [])[1] || 'a';
     const ink = kind === 'ink';
     const seed = 11 + index * 17;
@@ -226,6 +250,16 @@
   }
 
   document.querySelectorAll('.photo').forEach(buildPhoto);
+
+  /* .photo--fill: the photo fills its box (cropped) inside a drawn torn frame. It is zoomed
+     inside a crop box shaped like the torn hole, so the burnt border baked into the image
+     falls outside and only the drawn frame shows. */
+  document.querySelectorAll('.photo--fill img').forEach((img) => {
+    const crop = document.createElement('span');
+    crop.className = 'photo__crop';
+    img.replaceWith(crop);
+    crop.appendChild(img);
+  });
   document.querySelectorAll('.scroll').forEach(buildScroll);
   document.querySelectorAll('.stain').forEach(buildStain);
 })();
