@@ -439,7 +439,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   gap: 24px;
   opacity: 0;
   transform: translateX(30px);
-  transition: opacity .6s, transform .6s var(--ease);
+  transition: opacity 1.6s ease .4s, transform 1.6s var(--ease) .4s;   /* fade in slowly when the story starts */
 }
 .dots.is-visible { opacity: 1; transform: none; pointer-events: auto; }
 .dot { position: relative; z-index: 1; display: flex; align-items: center; height: 36px; }
@@ -611,6 +611,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .timeline__item:has(.timeline__topic br)::after { bottom: -58px; height: 28px; }   /* two-line topic: tick below it */
 .timeline__item.is-current .timeline__topic { text-shadow: 0 2px 22px rgba(20, 12, 6, .7); }
 .timeline__item.is-current { opacity: 1; transform: none; }
+.timeline__item.is-hidden { visibility: hidden; }
+/* first story: rises from below, slower and calmer */
+.timeline.is-entering.is-rolling .timeline__track { transition: transform 2.8s cubic-bezier(.22, .6, .25, 1); }
+.timeline.is-entering .timeline__item.is-current { transition: none; }
 .is-rolling .pager, .is-rolling .next { opacity: 0 !important; pointer-events: none; }
 
 /* ---------- Chapter title card (story covers, built by js/main.js) ---------- */

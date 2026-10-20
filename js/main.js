@@ -169,17 +169,24 @@
   const msIndex = (i) => milestones.findIndex((m) => m.index === i);
   let rollTimers = [];
 
-  function roll(from, to, onDone) {
+  // entering the first story from the prologue: nothing above it; the story's title and the
+  // milestones that follow it rise from below, and it stops in the middle
+  function roll(from, to, onDone, entering = false) {
     const n = milestones.length;
     const target = 2 * n + to;                               // stop in the middle copy
     const dist = Math.min(2 * n, Math.max(RUN, Math.abs(to - from)));
-    const start = target + (to >= from ? -dist : dist);
+    const start = entering ? target - 2.6 : target + (to >= from ? -dist : dist);
     rollTimers.forEach(clearTimeout);
-    items.forEach((it) => it.classList.remove('is-current'));
+    items.forEach((it, i) => {
+      it.classList.remove('is-current');
+      it.classList.toggle('is-hidden', entering && (i < target || i >= target + n - to));
+    });
+    timeline.classList.toggle('is-entering', entering);
     timeline.classList.remove('is-rolling');
     timeline.style.setProperty('--at', start);
     void timeline.offsetHeight;        // jump to the start without animating
     timeline.classList.add('is-on');
+    if (entering) items[target].classList.add('is-current');   // already the one in focus
     root.classList.add('is-rolling');
     rollTimers = [
       setTimeout(() => { timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),
@@ -287,8 +294,9 @@
     const rolling = !instant && toSec !== fromSec && to >= 0 && !still.matches;
     let wait = DURATION;
     if (rolling) {
+      const entering = msIndex(fromSec) < 0 && toSec > fromSec;
       const from = msIndex(fromSec) >= 0 ? msIndex(fromSec) : to + (toSec > fromSec ? -1 : 1);
-      roll(from, to, () => toSlide.classList.add('is-active'));
+      roll(from, to, () => toSlide.classList.add('is-active'), entering);
       wait = ROLL + 600;
     }
 
@@ -320,7 +328,12 @@
     // top bar: where we are in the story, and overall progress along the bottom
     const names = { overview: 'Prologue', 'bigger-picture': 'The Bigger Picture', consequences: 'Epilogue' };
     const anchorName = sections[sec].dataset.anchor;
-    hudChapter.innerHTML = ms ? `Chapter ${pad(milestones.indexOf(ms) + 1)} <span>—</span> ${sections[sec].dataset.label}` : (names[anchorName] || '');
+    const chapterText = ms ? `Chapter ${pad(milestones.indexOf(ms) + 1)} <span>—</span> ${sections[sec].dataset.label}` : (names[anchorName] || '');
+    if (hudChapter.innerHTML !== chapterText) {               // the label fades in slowly when it changes
+      hudChapter.innerHTML = chapterText;
+      hudChapter.animate([{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 1400, delay: 300, easing: 'ease-out', fill: 'backwards' });
+    }
     const done = slidesOf.slice(0, sec).reduce((n, l) => n + l.length, 0) + sl;
     hudBar.style.transform = `scaleX(${done / (slidesOf.flat().length - 1)})`;
     root.classList.toggle('is-home', sec === 0);
