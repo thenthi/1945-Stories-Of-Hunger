@@ -796,6 +796,84 @@ html.is-flow .sound { display: none; }
 .hud, .dots, .pager { transition: opacity .8s ease; }
 .is-watching .hud, .is-watching .pager { opacity: 0; pointer-events: none; }   /* nothing on top of the film */
 
+/* ---------- Home: memorial book-cover layout ---------- */
+.hero {
+  height: calc(var(--h) * 1px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.hero__kicker {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-family: var(--font-body);
+  font-size: 22px;
+  letter-spacing: .38em;
+  text-transform: uppercase;
+  color: #cdb894;
+}
+.hero__kicker::before { content: ""; width: 56px; height: 1px; background: currentColor; }
+.slide .hero__title { margin: 34px 0 56px; color: #f3ebe1; text-shadow: 0 4px 30px rgba(0, 0, 0, .5); }
+.hero__year {
+  display: block;
+  font-size: 250px;
+  line-height: .85;
+  letter-spacing: -.02em;
+}
+.hero__name {
+  display: block;
+  margin-top: 26px;
+  font-size: 52px;
+  line-height: 1.1;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+.hero__btn {
+  position: relative;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 26px 16px 0;
+  font-family: var(--font-title);
+  font-size: 24px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #f3ebe1;
+  isolation: isolate;
+  transition: color .2s ease, padding .25s var(--ease), letter-spacing .25s var(--ease);
+}
+/* the entrance animation's delay must not slow down the hover: only opacity/transform keep it */
+.slide.is-active .layer.hero > .hero__btn[data-anim] {   /* beats the [data-anim]:nth-child delays */
+  transition: opacity .9s ease, transform .9s var(--ease),
+              color .2s ease, padding .25s var(--ease), letter-spacing .25s var(--ease);
+  transition-delay: .85s, .85s, 0s, 0s, 0s;
+}
+/* underline that grows into a filled cream block on hover */
+.hero__btn::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  z-index: -1;
+  background: #eadcc4;
+  transition: height .25s var(--ease);
+}
+.hero__btn span { display: inline-block; transition: transform .25s var(--ease); }
+.hero__btn:hover, .hero__btn:focus-visible { color: #2a221d; padding-left: 26px; letter-spacing: .26em; }
+.hero__btn:hover::before, .hero__btn:focus-visible::before { height: 100%; }
+.hero__btn:hover span, .hero__btn:focus-visible span { transform: translateX(10px); }
+.hero__btn:active { transform: translateY(1px); }
+.hero__photo { rotate: 1.5deg; }
+html.is-flow .hero { height: auto; }
+html.is-flow .hero__year { font-size: clamp(80px, 26vw, 140px); }
+html.is-flow .hero__name { font-size: clamp(22px, 6vw, 34px); white-space: normal; }
+html.is-flow .hero__kicker { font-size: 13px; }
+html.is-flow .hero__photo { rotate: none; }
+
 /* ---------- Photo hover caption & full-screen viewer ---------- */
 .photo.is-zoomable { cursor: zoom-in; }
 .photo .photo__paper { transition: filter .45s ease; }
