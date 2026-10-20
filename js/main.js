@@ -75,7 +75,7 @@
     card.className = 'layer chapter-card';
     card.innerHTML = `<span class="chapter-card__num" aria-hidden="true">${pad(i + 1)}</span>
       <p class="chapter-card__eyebrow" data-anim>Chapter ${pad(i + 1)} <span></span> ${date.trim()}</p>
-      <h2 class="title chapter-card__title" data-anim>${topic.trim()}</h2>
+      <h2 class="title chapter-card__title" data-anim>${h.innerHTML.includes(':') ? h.innerHTML.split(':').pop().trim() : topic.trim()}</h2>
       ${lede ? `<p class="chapter-card__lede" data-anim>${lede}</p>` : ''}`;
     h.closest('.layer').replaceWith(card);
     card.insertAdjacentHTML('beforebegin', '<div class="scrim" aria-hidden="true"></div>');
@@ -152,8 +152,11 @@
   const RUN = 12;                      // at least this many milestones go by
   const topics = milestones.map((m) => {
     const title = sections[m.index].querySelector('.cover .title, .title');
-    const text = title ? title.textContent.replace(/\s+/g, ' ').trim() : '';
-    return { date: sections[m.index].dataset.label, topic: text.includes(':') ? text.split(':').pop().trim() : text };
+    // keep the title's line break (<br>) so the topic breaks in the same place
+    const html = title ? title.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') : '';
+    const text = html.replace(/[ \t]+/g, ' ').trim();
+    const topic = (text.includes(':') ? text.split(':').pop() : text).trim().replace(/\s*\n\s*/g, '<br>');
+    return { date: sections[m.index].dataset.label, topic };
   });
   const timeline = document.createElement('div');
   timeline.className = 'timeline';

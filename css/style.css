@@ -597,7 +597,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   transition: opacity .6s ease, transform .9s var(--ease);
 }
 .timeline__date { font-size: 34px; letter-spacing: .12em; text-transform: uppercase; }
-.timeline__topic { font-family: var(--font-title); font-size: 96px; line-height: 1; text-transform: uppercase; }
+.timeline__topic { font-family: var(--font-title); font-size: 96px; line-height: 1; text-transform: uppercase; text-align: center; }
 .timeline__item::after {                            /* short tick between milestones */
   content: "";
   position: absolute;
@@ -608,6 +608,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   background: currentColor;
   opacity: .5;
 }
+.timeline__item:has(.timeline__topic br)::after { bottom: -58px; height: 28px; }   /* two-line topic: tick below it */
 .timeline__item.is-current .timeline__topic { text-shadow: 0 2px 22px rgba(20, 12, 6, .7); }
 .timeline__item.is-current { opacity: 1; transform: none; }
 .is-rolling .pager, .is-rolling .next { opacity: 0 !important; pointer-events: none; }
