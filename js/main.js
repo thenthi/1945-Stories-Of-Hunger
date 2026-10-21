@@ -45,8 +45,8 @@
     slide.querySelectorAll('.photo').forEach((p, i) => p.style.setProperty('--depth', [1, 0.8, 1.2][i % 3])));
   let tx = 0, ty = 0, mx = 0, my = 0, raf = 0;
   function drift() {
-    mx += (tx - mx) * 0.04;
-    my += (ty - my) * 0.04;
+    mx += (tx - mx) * 0.15;   // follows the mouse closely, still eased
+    my += (ty - my) * 0.15;
     root.style.setProperty('--mx', mx.toFixed(4));
     root.style.setProperty('--my', my.toFixed(4));
     raf = Math.abs(tx - mx) + Math.abs(ty - my) > 0.0005 ? requestAnimationFrame(drift) : 0;
@@ -127,8 +127,43 @@
     if (!img || !img.alt || photo.hasAttribute('data-flow-hide')) return;
     photo.classList.add('is-zoomable');
     photo.insertAdjacentHTML('beforeend', `<figcaption class="photo__cap">${img.alt}</figcaption>`);
-    photo.addEventListener('click', () => { if (photo.closest('.slide.is-active')) openPhoto(img); });
+    photo.addEventListener('click', () => { if (photo.classList.contains('is-hover')) openPhoto(img); });
   });
+
+  /* Hover only counts on the picture itself, not on the empty part of its box: the photos keep
+     their proportions inside the box (object-fit: contain) and have a torn, partly transparent edge,
+     so we work out where the picture really is and shrink that a little. */
+  const zoomables = Array.from(document.querySelectorAll('.photo.is-zoomable'));
+  function pictureRect(photo) {
+    const img = photo.querySelector('img');
+    const r = img.getBoundingClientRect();
+    let { left, top, width, height } = r;
+    const fit = getComputedStyle(img).objectFit;
+    if (fit === 'contain' && img.naturalWidth) {
+      const ir = img.naturalWidth / img.naturalHeight;
+      if (width / height > ir) { const w = height * ir; left += (width - w) / 2; width = w; }
+      else { const h = width / ir; top += (height - h) / 2; height = h; }
+    }
+    const k = photo.classList.contains('photo--framed') ? 0.05 : 0.11;   // torn / faded edge
+    return { left: left + width * k, right: left + width * (1 - k), top: top + height * k, bottom: top + height * (1 - k) };
+  }
+  let hoverRaf = 0, px = -1, py = -1;
+  function updateHover() {
+    hoverRaf = 0;
+    let any = false;
+    zoomables.forEach((photo) => {
+      const r = photo.closest('.slide.is-active') && !viewing() ? pictureRect(photo) : null;
+      const on = !!r && px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
+      photo.classList.toggle('is-hover', on);
+      any = any || on;
+    });
+    document.body.classList.toggle('over-photo', any);
+  }
+  window.addEventListener('mousemove', (e) => {
+    px = e.clientX; py = e.clientY;
+    if (!hoverRaf) hoverRaf = requestAnimationFrame(updateHover);
+  });
+  document.addEventListener('mouseleave', () => { px = py = -1; updateHover(); });
 
   /* ---------- Milestone dots ---------- */
   const milestones = [];
@@ -147,15 +182,14 @@
   /* ---------- Timeline roll: between two stories the milestones scroll past in one continuous
      run (fast, then slowing down) and settle on the new story's topic, like the year column of
      the UN Women timeline. Only then do the story's pictures come in. ---------- */
+  const ENTER = 2600;                  // shorter roll into the first story
   const ROLL = 4200;                   // ms until the new story's content starts to appear
   const COPIES = 5;                    // the list repeats so every roll passes several milestones
   const RUN = 12;                      // at least this many milestones go by
   const topics = milestones.map((m) => {
     const title = sections[m.index].querySelector('.cover .title, .title');
-    // keep the title's line break (<br>) so the topic breaks in the same place
-    const html = title ? title.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') : '';
-    const text = html.replace(/[ \t]+/g, ' ').trim();
-    const topic = (text.includes(':') ? text.split(':').pop() : text).trim().replace(/\s*\n\s*/g, '<br>');
+    const text = title ? title.textContent.replace(/\s+/g, ' ').trim() : '';   // one line, even if the title breaks
+    const topic = (text.includes(':') ? text.split(':').pop() : text).trim();
     return { date: sections[m.index].dataset.label, topic };
   });
   const timeline = document.createElement('div');
@@ -186,12 +220,11 @@
     timeline.style.setProperty('--at', start);
     void timeline.offsetHeight;        // jump to the start without animating
     timeline.classList.add('is-on');
-    if (entering) items[target].classList.add('is-current');   // already the one in focus
     root.classList.add('is-rolling');
     rollTimers = [
       setTimeout(() => { timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),
-      setTimeout(() => items[target].classList.add('is-current'), 3600),
-      setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, ROLL),
+      setTimeout(() => items[target].classList.add('is-current'), entering ? 2000 : 3600),   // grows as it arrives
+      setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, entering ? ENTER : ROLL),
     ];
   }
 
@@ -297,7 +330,7 @@
       const entering = msIndex(fromSec) < 0 && toSec > fromSec;
       const from = msIndex(fromSec) >= 0 ? msIndex(fromSec) : to + (toSec > fromSec ? -1 : 1);
       roll(from, to, () => toSlide.classList.add('is-active'), entering);
-      wait = ROLL + 600;
+      wait = (entering ? ENTER : ROLL) + 600;
     }
 
     sections.forEach((s, i) => s.classList.toggle('is-active', i === toSec));
@@ -337,6 +370,9 @@
     const done = slidesOf.slice(0, sec).reduce((n, l) => n + l.length, 0) + sl;
     hudBar.style.transform = `scaleX(${done / (slidesOf.flat().length - 1)})`;
     root.classList.toggle('is-home', sec === 0);
+    // nav bar: light up the part of the site we are in (any chapter counts as "Story")
+    const navKey = /^m\d/.test(anchorName) ? 'm1' : anchorName;
+    document.querySelectorAll('#siteNav .site-nav__links button').forEach((b) => b.classList.toggle('is-current', b.dataset.goto === navKey));
     prevSlideBtn.disabled = sl === 0;
     nextSlideBtn.disabled = sl === count - 1;
 

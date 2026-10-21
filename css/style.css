@@ -151,6 +151,15 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
           mask: none;
 }
 .torn-brush .photo__paper::after { mix-blend-mode: normal; }
+.torn-oval .photo__paper {
+  filter: none;
+  overflow: hidden;
+  -webkit-mask: var(--hole) center / 100% 100% no-repeat;
+          mask: var(--hole) center / 100% 100% no-repeat;
+}
+.torn-oval img { -webkit-mask: none; mask: none; }
+.slide .torn-oval.intro__photo img { scale: 1; }   /* cropped image (hero-queue-inner) has no border to hide */
+.torn-oval .photo__paper::after { content: none; }
 
 /* fill photo (Overview): cropped to fill a drawn torn frame, zoomed past its own burnt border */
 .photo__crop {
@@ -171,7 +180,16 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
           mask: none;
 }
 .photo--framed .photo__paper::after { content: none; }
-.photo--framed.photo--stretch img { object-fit: fill; }   /* stretched to the box's width */
+.photo--framed.photo--stretch img { object-fit: fill; }
+/* photo with a heavy dark smoke border (chapter 4): fade the edges out and let the dark
+   parts take on the page colour, so it melts into the background instead of sitting on it */
+.photo--blend .photo__paper { filter: none; }
+.photo--blend img {
+  -webkit-mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, rgba(0, 0, 0, .6) 75%, transparent 100%) !important;
+          mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, rgba(0, 0, 0, .6) 75%, transparent 100%) !important;
+  mix-blend-mode: luminosity;
+  opacity: .9;
+}   /* stretched to the box's width */
 
 /* ---------- Gentle reveal: photos arrive blurred, then come into focus ----------
    so the audience is not hit by a harrowing image at once.
@@ -181,9 +199,9 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .section[data-anchor="intro"] .photo { --blur: 0px; }
 .slide.is-active .photo {
   filter: none;
-  transition: opacity .9s ease .55s, filter 2.4s ease 1s;
+  transition: opacity .9s ease .55s, filter 3s ease .6s;   /* comes into focus gradually over 3s */
 }
-.slide.is-active .photo.is-heavy { transition: opacity .9s ease .55s, filter 3.5s ease 2.2s; }
+.slide.is-active .photo.is-heavy { transition: opacity .9s ease .55s, filter 3s ease .6s; }
 
 .photo.is-dim   { opacity: .22; }   /* background photo behind a text column */
 .photo.is-faded { opacity: .55; }
@@ -608,20 +626,18 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   background: currentColor;
   opacity: .5;
 }
-.timeline__item:has(.timeline__topic br)::after { bottom: -58px; height: 28px; }   /* two-line topic: tick below it */
 .timeline__item.is-current .timeline__topic { text-shadow: 0 2px 22px rgba(20, 12, 6, .7); }
 .timeline__item.is-current { opacity: 1; transform: none; }
 .timeline__item.is-hidden { visibility: hidden; }
 /* first story: rises from below, slower and calmer */
-.timeline.is-entering.is-rolling .timeline__track { transition: transform 2.8s cubic-bezier(.22, .6, .25, 1); }
-.timeline.is-entering .timeline__item.is-current { transition: none; }
+.timeline.is-entering.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.22, .6, .25, 1); }
 .is-rolling .pager, .is-rolling .next { opacity: 0 !important; pointer-events: none; }
 
 /* ---------- Chapter title card (story covers, built by js/main.js) ---------- */
 .scrim { display: none; }   /* no dark pool: the text carries its own soft shadow */
 /* story covers: the whole photo is dimmed evenly so the chapter number and title read clearly */
 .cover .photo img { filter: brightness(.58) contrast(1.05); transition: filter .6s ease; }
-.cover .photo.is-zoomable:hover img { filter: none; }
+.cover .photo.is-zoomable.is-hover img { filter: none; }
 .layer.chapter-card { left: 130px; top: auto; bottom: 150px; width: 1180px; }
 .chapter-card__num {
   position: absolute;
@@ -799,7 +815,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 html.is-flow .sound { display: none; }
 
 .hud, .dots, .pager { transition: opacity .8s ease; }
-.is-watching .hud, .is-watching .pager { opacity: 0; pointer-events: none; }   /* nothing on top of the film */
+.is-watching .hud, .is-watching .pager, .is-watching .site-nav { opacity: 0; pointer-events: none; }   /* nothing on top of the film */
 
 /* ---------- Home: memorial book-cover layout ---------- */
 .hero {
@@ -822,14 +838,14 @@ html.is-flow .sound { display: none; }
 .slide .hero__title { margin: 34px 0 56px; color: #f3ebe1; text-shadow: 0 4px 30px rgba(0, 0, 0, .5); }
 .hero__year {
   display: block;
-  font-size: 250px;
+  font-size: 220px;
   line-height: .85;
   letter-spacing: -.02em;
 }
 .hero__name {
   display: block;
   margin-top: 26px;
-  font-size: 52px;
+  font-size: 42px;
   line-height: 1.1;
   letter-spacing: .12em;
   white-space: nowrap;
@@ -879,10 +895,151 @@ html.is-flow .hero__name { font-size: clamp(22px, 6vw, 34px); white-space: norma
 html.is-flow .hero__kicker { font-size: 13px; }
 html.is-flow .hero__photo { rotate: none; }
 
+/* ---------- Introduction (overview): two brushed B&W photos, a pale paper strip in the middle ---------- */
+.intro__photo img { filter: grayscale(1) sepia(.45) contrast(1.08) brightness(.95); scale: 1.3; }   /* warm, faded yellow */
+.intro__photo .photo__paper::after { content: none; }   /* edges fade straight into the page */
+/* no separate strip: the text sits on the page background between the two photos */
+.intro {
+  height: calc(var(--h) * 1px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.slide .intro__title {
+  font-size: 68px;
+  line-height: 1.08;
+  letter-spacing: .02em;
+  color: #f3ebe1;
+  text-shadow: none;
+}
+.intro__title::after {
+  content: "";
+  display: block;
+  width: 300px;
+  height: 2px;
+  margin: 26px auto 34px;
+  background: #d8c3a0;
+}
+.slide .intro__text { color: rgba(243, 235, 225, .88); text-shadow: none; text-align: center; font-size: 23px; line-height: 1.55; }
+.intro__dots { margin-top: 30px; font-size: 22px; letter-spacing: .6em; color: #d8c3a0; }
+html.is-flow .intro { height: auto; }
+html.is-flow .slide .intro__title { font-size: clamp(26px, 7vw, 40px); color: #f3ebe1; }
+html.is-flow .intro__title::after { background: #f3ebe1; width: 120px; }
+html.is-flow .slide .intro__text, html.is-flow .intro__dots { color: #f3ebe1; }
+
+/* ---------- Nav bar (fixed UI, every page); replaces the small brand / chapter labels ---------- */
+.hud__brand, .hud__chapter { display: none; }
+.site-nav {
+  position: absolute;
+  left: 100px;
+  right: 100px;
+  top: 52px;
+  pointer-events: auto;
+  transition: opacity .8s ease;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+/* soft dark band behind the bar so it reads over photos */
+.site-nav::before {
+  content: "";
+  position: absolute;
+  left: -100px;
+  right: -100px;
+  top: -52px;
+  height: 150px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(rgba(14, 11, 8, .7), rgba(14, 11, 8, .35) 55%, transparent);
+}
+.site-nav__links button, .site-nav__brand { text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+.site-nav__brand {
+  font-family: var(--font-title);
+  font-size: 22px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: #f3ebe1;
+}
+.site-nav__brand span { color: #a8875a; }
+.site-nav__links { display: flex; gap: 54px; list-style: none; }
+.site-nav__links button {
+  position: relative;
+  padding: 8px 0;
+  font-family: var(--font-title);
+  font-size: 20px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(243, 235, 225, .72);
+  transition: color .2s ease;
+}
+.site-nav__links button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .25s var(--ease);
+}
+.site-nav__links button:hover, .site-nav__links button.is-current { color: #f3ebe1; }
+.site-nav__links button:hover::after, .site-nav__links button.is-current::after { transform: scaleX(1); }
+html.is-flow .site-nav { flex-direction: column; align-items: flex-start; gap: 12px; }
+html.is-flow .site-nav__links { flex-wrap: wrap; gap: 8px 20px; }
+html.is-flow .site-nav__links button { font-size: 13px; }
+html.is-flow .site-nav__brand { font-size: 15px; }
+
+/* ---------- The Bigger Picture: evenly spaced title / text and photo + caption columns ---------- */
+.bp-intro {
+  height: calc(var(--h) * 1px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 50px;
+}
+.bp-intro__text { max-width: 980px; }
+.bp-intro__text p + p { margin-top: .9em; }
+.archive-cap { font-size: 21px; line-height: 1.45; }
+.archive-cap--center { text-align: center; }
+
+/* ---------- Consequences: centred title with rule, two spaced paragraphs, soft dark pool behind ---------- */
+.conseq {
+  height: calc(var(--h) * 1px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  isolation: isolate;
+}
+.conseq::before {
+  content: "";
+  position: absolute;
+  inset: 18% -6%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(20, 15, 10, .6), rgba(20, 15, 10, .35) 60%, transparent);
+}
+.conseq__title::after {
+  content: "";
+  display: block;
+  width: 240px;
+  height: 1px;
+  margin: 30px auto 44px;
+  background: #d8c3a0;
+}
+.conseq__text { max-width: 980px; font-size: 28px; line-height: 1.6; }
+.conseq__text p + p { margin-top: 1.1em; }
+html.is-flow .conseq { height: auto; }
+
 /* ---------- Photo hover caption & full-screen viewer ---------- */
-.photo.is-zoomable { cursor: zoom-in; }
+.over-photo { cursor: zoom-in; }
 .photo .photo__paper { transition: filter .45s ease; }
-.slide.is-active .photo.is-zoomable:hover .photo__paper { filter: drop-shadow(0 22px 40px rgba(0, 0, 0, .75)) brightness(1.08); }
+.slide.is-active .photo.is-zoomable.is-hover .photo__paper { filter: drop-shadow(0 22px 40px rgba(0, 0, 0, .75)) brightness(1.08); }
 .photo__cap {
   position: absolute;
   left: 50%;
@@ -900,7 +1057,7 @@ html.is-flow .hero__photo { rotate: none; }
   transition: opacity .35s ease, transform .35s ease;
   pointer-events: none;
 }
-.slide.is-active .photo.is-zoomable:hover .photo__cap { opacity: 1; transform: translate(-50%, 0); }
+.slide.is-active .photo.is-zoomable.is-hover .photo__cap { opacity: 1; transform: translate(-50%, 0); }
 
 .lightbox {
   position: fixed;

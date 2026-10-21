@@ -124,12 +124,41 @@
     photo.style.setProperty('--scorch', svgUrl(scorch));
   }
 
+  /* ---------------------------------------------------------
+     Oval blot (.torn-oval, home page): a rounded, uneven ink-blot shape whose
+     edge fades and bleeds into the page in soft patches.
+     --------------------------------------------------------- */
+  function buildOval(photo, W, H, seed) {
+    const min = Math.min(W, H);
+    const vb = `viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none"`;
+    const id = `o${++uid}`;
+    const hole = `<svg xmlns="http://www.w3.org/2000/svg" ${vb}><defs>
+      <filter id="${id}" filterUnits="userSpaceOnUse" x="0" y="0" width="${f1(W)}" height="${f1(H)}">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="${f1(min * 0.09)}" result="soft"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(2.2 / min).toFixed(4)}" numOctaves="3" seed="${seed}" result="big"/>
+        <feTurbulence type="fractalNoise" baseFrequency="${(9 / min).toFixed(4)}" numOctaves="4" seed="${seed + 9}" result="small"/>
+        <feComposite in="big" in2="small" operator="arithmetic" k2=".7" k3=".3" result="n"/>
+        <feColorMatrix in="n" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0" result="na"/>
+        <feComposite in="soft" in2="na" operator="arithmetic" k2="1" k3="1.1" k4="-1" result="sum"/>
+        <feComponentTransfer in="sum" result="shape"><feFuncA type="linear" slope="2.4" intercept="0"/></feComponentTransfer>
+        <feFlood flood-color="#fff"/><feComposite in2="shape" operator="in"/>
+      </filter></defs>
+      ${photo.classList.contains('torn-soft')
+        // soft rectangle: rounded corners, the same blotchy, fading edge
+        ? `<rect x="${f1(W * 0.08)}" y="${f1(H * 0.1)}" width="${f1(W * 0.84)}" height="${f1(H * 0.8)}" rx="${f1(min * 0.1)}" fill="#fff" filter="url(#${id})"/>`
+        : `<ellipse cx="${f1(W / 2)}" cy="${f1(H / 2)}" rx="${f1(W * 0.41)}" ry="${f1(H * 0.37)}" fill="#fff" filter="url(#${id})"/>`}</svg>`;
+    photo.style.setProperty('--paper', 'none');
+    photo.style.setProperty('--hole', svgUrl(hole));
+    photo.style.setProperty('--scorch', 'none');
+  }
+
   function buildPhoto(photo, index) {
     const W = num(photo, '--w'), H = num(photo, '--h');
     if (!W || !H) return;
     const min = Math.min(W, H);
     if (photo.classList.contains('photo--framed')) return;    // frame is already in the image
     if (photo.classList.contains('torn-brush')) return buildBrush(photo, W, H, 11 + index * 17);
+    if (photo.classList.contains('torn-oval')) return buildOval(photo, W, H, 23);
     if (photo.classList.contains('photo--fill')) return buildBurnt(photo, W, H, 11 + index * 17);
     const kind = (photo.className.match(/torn-(a|b|c|ink)/) || [])[1] || 'a';
     const ink = kind === 'ink';
