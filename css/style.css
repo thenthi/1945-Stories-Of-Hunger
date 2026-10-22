@@ -598,7 +598,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   transform: translateY(calc(var(--at, 0) * -260px));
 }
 /* one continuous run: starts fast, slows down and settles on the topic */
-.timeline.is-rolling .timeline__track { transition: transform 3.6s cubic-bezier(.12, .6, .15, 1); }
+.timeline.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.12, .6, .15, 1); }
 .timeline__item {
   position: relative;
   height: 260px;

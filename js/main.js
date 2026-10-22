@@ -205,8 +205,8 @@
   /* ---------- Timeline roll: between two stories the milestones scroll past in one continuous
      run (fast, then slowing down) and settle on the new story's topic, like the year column of
      the UN Women timeline. Only then do the story's pictures come in. ---------- */
-  const ENTER = 2600;                  // shorter roll into the first story
-  const ROLL = 4200;                   // ms until the new story's content starts to appear
+  const ENTER = 2850;                  // shorter roll into the first story
+  const ROLL = 2950;                   // ms until the new story's content starts to appear
   const COPIES = 5;                    // the list repeats so every roll passes several milestones
   const RUN = 12;                      // at least this many milestones go by
   const topics = milestones.map((m) => {
@@ -244,10 +244,9 @@
     void timeline.offsetHeight;        // jump to the start without animating
     timeline.classList.add('is-on');
     root.classList.add('is-rolling');
-    play('scroll');
     rollTimers = [
-      setTimeout(() => { timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),
-      setTimeout(() => items[target].classList.add('is-current'), entering ? 2000 : 3600),   // grows as it arrives
+      setTimeout(() => { play('scroll'); timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),   // the sound and the roll start together; its last hit lands with the roll
+      setTimeout(() => items[target].classList.add('is-current'), 2050),   // grows as it arrives, on the last hit of the scroll sound
       setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, entering ? ENTER : ROLL),
     ];
   }
@@ -292,7 +291,7 @@
     if (markerY === null || markerY === toY || still.matches) return arrive();
     // in step with the timeline roll when changing story: same length, fast start, slow finish
     const rolling = root.classList.contains('is-rolling');
-    const dur = rolling ? 3600 : 1400;
+    const dur = rolling ? 2300 : 1400;
     const ease = (t) => -(Math.cos(Math.PI * t) - 1) / 2;   // gentle start and finish, no jolt
     const fromY = markerY;
     markerDelay = setTimeout(() => {
