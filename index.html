@@ -191,7 +191,7 @@
       </article>
       <article class="slide paper-charcoal">
         <div class="stage">
-          <figure class="photo is-heavy photo--framed" style="--x:1160;--y:20;--w:870;--h:1110">
+          <figure class="photo is-heavy photo--framed" style="--x:1090;--y:20;--w:870;--h:1110">
             <div class="photo__paper"><img src="assets/photos/m3-children.webp" alt="Emaciated children standing in a field"></div>
           </figure>
           <div class="layer panel" style="--x:65;--y:0;--w:1050;--h:1125">
@@ -456,7 +456,7 @@
     <div class="track">
       <article class="slide has-video">
         <!-- Video phía sau chữ: lúc đầu mờ & dừng; cuộn thêm 1 lần thì chữ biến mất, video rõ và tự chạy -->
-        <video class="bg-video" src="assets/video/consequences.mp4" muted loop playsinline preload="auto" aria-label="Archive footage of the 1945 famine"></video>
+        <video class="bg-video" src="assets/video/consequences.mp4" muted playsinline preload="auto" aria-label="Archive footage of the 1945 famine"></video>
         <button class="sound" type="button" aria-label="Turn sound on"><span class="sound__icon" aria-hidden="true"></span><span class="sound__text">Sound on</span></button>
         <div class="stage">
           <div class="stain" data-stain="coffee" data-corner="tr" style="--x:1550;--y:-20;--w:500;--h:400"></div>
@@ -491,6 +491,14 @@
         <li><button type="button" data-goto="consequences">Consequences</button></li>
       </ul>
     </nav>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="Turn sound off" aria-pressed="true">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>
+        <path class="audio-toggle__waves" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>
+        <path class="audio-toggle__off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/>
+      </svg>
+      <span class="audio-toggle__text">Sound on</span>
+    </button>
     <div class="hud">
       <button class="hud__brand" type="button" data-goto="intro">1945 <span>·</span> Stories of Hunger</button>
       <p class="hud__chapter" id="hudChapter"></p>

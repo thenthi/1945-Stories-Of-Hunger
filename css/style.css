@@ -14,6 +14,7 @@
   --font-body: "Alegreya", Georgia, serif;
   --ease: cubic-bezier(.77, 0, .18, 1);
   --dur: 1s;
+  --soft: cubic-bezier(.45, 0, .2, 1);   /* slow, gentle start and finish */
 
   /* fine paper grain */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .24 0 0 0 0 .16 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -92,6 +93,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   width: calc(var(--w) * 1px);
 }
 .photo, .scroll, .card { height: calc(var(--h) * 1px); }
+.photo { left: calc(var(--x) * 1px + var(--off, 0px)); }   /* --off pushes a photo off its side of the screen (see below) */
 
 /* ---------- Torn & burnt photo frames (shapes drawn by js/decor.js) ---------- */
 .photo {
@@ -463,14 +465,14 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .dot { position: relative; z-index: 1; display: flex; align-items: center; height: 36px; }
 .dot::after {
   content: "";
-  width: 22px;
-  height: 22px;
-  border: 2.5px solid #fff;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
   border-radius: 50%;
   box-shadow: 0 0 6px rgba(0, 0, 0, .3);
   transition: background .3s, transform .3s;
 }
-.dot:hover::after { transform: scale(1.15); }
+.dot:not(.is-picked):hover::after { transform: scale(1.15); }
 .dot.is-active::after { background: #fff; }
 .dot__label {
   position: absolute;
@@ -489,7 +491,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   transition: opacity .4s, transform .5s var(--ease);
   z-index: -1;
 }
-.dot:not(.is-active):hover .dot__label { opacity: 1; transform: translate(0, -50%); }
+.dot:not(.is-active):not(.is-picked):hover .dot__label { opacity: 1; transform: translate(0, -50%); }   /* .is-picked: just clicked, no hover until the pointer leaves */
 
 /* the brown box (moved by js/main.js) slides to the current milestone, naming each one it passes */
 .dots__marker {
@@ -814,8 +816,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .slide.is-revealed .bg-video { cursor: pointer; }
 html.is-flow .sound { display: none; }
 
-.hud, .dots, .pager { transition: opacity .8s ease; }
-.is-watching .hud, .is-watching .pager, .is-watching .site-nav { opacity: 0; pointer-events: none; }   /* nothing on top of the film */
+.hud, .dots, .pager, .audio-toggle { transition: opacity .8s ease; }
+.is-watching .hud, .is-watching .pager, .is-watching .site-nav, .is-watching .audio-toggle { opacity: 0; pointer-events: none; }   /* nothing on top of the film */
 
 /* ---------- Home: memorial book-cover layout ---------- */
 .hero {
@@ -947,32 +949,32 @@ html.is-flow .slide .intro__text, html.is-flow .intro__dots { color: #f3ebe1; }
 .site-nav::before {
   content: "";
   position: absolute;
-  left: -100px;
-  right: -100px;
-  top: -52px;
-  height: 150px;
+  left: -3000px;                    /* runs past the stage to both edges of the window, however wide */
+  right: -3000px;
+  top: -1000px;
+  height: 1098px;
   z-index: -1;
   pointer-events: none;
-  background: linear-gradient(rgba(14, 11, 8, .7), rgba(14, 11, 8, .35) 55%, transparent);
+  background: linear-gradient(rgba(14, 11, 8, .88) 948px, rgba(14, 11, 8, .55) 1030px, transparent);
 }
-.site-nav__links button, .site-nav__brand { text-shadow: 0 1px 6px rgba(0, 0, 0, .8); }
+.site-nav__links button, .site-nav__brand { text-shadow: 0 1px 3px rgba(0, 0, 0, .9), 0 0 14px rgba(0, 0, 0, .75); }
 .site-nav__brand {
   font-family: var(--font-title);
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: .24em;
   text-transform: uppercase;
   color: #f3ebe1;
 }
-.site-nav__brand span { color: #a8875a; }
+.site-nav__brand span { color: #d1ab76; }
 .site-nav__links { display: flex; gap: 54px; list-style: none; }
 .site-nav__links button {
   position: relative;
   padding: 8px 0;
   font-family: var(--font-title);
-  font-size: 20px;
+  font-size: 22px;
   letter-spacing: .18em;
   text-transform: uppercase;
-  color: rgba(243, 235, 225, .72);
+  color: rgba(243, 235, 225, .95);
   transition: color .2s ease;
 }
 .site-nav__links button::after {
@@ -1153,3 +1155,52 @@ html.is-flow .w { opacity: 1; transform: none; }
 html.is-flow [data-anim] { opacity: 1 !important; transform: none !important; letter-spacing: normal !important; }
 html.is-flow .slide.has-video { display: flex; flex-direction: column; }
 html.is-flow .slide.has-video .bg-video { order: 2; }
+
+
+/* ---------- Story pages inside one chapter (html[data-move], set by js/main.js) ----------
+   Text fades out, then each picture slips off the side it stands on; the next picture comes in
+   from its own side and only then does the new text appear. Pictures in the middle just fade. */
+html[data-move] .photo[data-side="l"] { --off: -1400px; }
+html[data-move] .photo[data-side="r"] { --off: 1400px; }
+html[data-move] .slide.is-active .photo[data-side] { --off: 0px; }
+html[data-move] .slide.is-leaving { transition: opacity .1s linear .9s, visibility 0s; }
+html[data-move] .slide.is-leaving [data-anim] { transition: opacity .3s ease, transform .3s ease; }
+html[data-move] .slide.is-leaving .photo { opacity: 0; transition: left .9s var(--soft), opacity .8s ease .05s, filter .5s ease; }
+html[data-move] .slide.is-active { transition: opacity .3s ease .7s, visibility 0s; }
+html[data-move] .slide.is-active .photo,
+html[data-move] .slide.is-active .photo.is-heavy { transition: left 1s var(--soft) .7s, opacity .9s ease .7s, filter 3s ease .85s; }
+html[data-move] .slide.is-active [data-anim] { transition-delay: 1.4s; }
+html[data-move] .slide.is-active [data-anim] ~ [data-anim] { transition-delay: 1.6s; }
+html[data-move] .slide.is-active [data-anim] ~ [data-anim] ~ [data-anim] { transition-delay: 1.8s; }
+html[data-move] .slide.is-active [data-anim] ~ [data-anim] ~ [data-anim] ~ [data-anim] { transition-delay: 2s; }
+html[data-move] .slide.is-active .layer > [data-anim]:nth-child(2) { transition-delay: 1.55s; }
+html[data-move] .slide.is-active .layer > [data-anim]:nth-child(3) { transition-delay: 1.7s; }
+html[data-move] .slide.is-active .w { transition-delay: calc(1.5s + min(var(--i) * 22ms, 1.6s)); }
+html[data-move] .slide.is-active .title .w,
+html[data-move] .slide.is-active .panel__year .w,
+html[data-move] .slide.is-active .panel__title .w { transition-delay: calc(1.3s + var(--i) * 90ms); }
+
+/* sound on / off for the background music and the sound effects (bottom left) */
+.audio-toggle {
+  position: absolute;
+  left: 100px;
+  top: 1004px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+  pointer-events: auto;
+  font-family: var(--font-title);
+  font-size: 18px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(243, 235, 225, .85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+  transition: color .2s ease, opacity .8s ease;
+}
+.audio-toggle:hover { color: #fff; }
+.audio-toggle svg { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .8)); }
+.audio-toggle__off { display: none; }
+.audio-toggle.is-off .audio-toggle__waves { display: none; }
+.audio-toggle.is-off .audio-toggle__off { display: inline; }

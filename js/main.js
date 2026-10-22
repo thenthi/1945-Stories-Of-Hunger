@@ -30,10 +30,46 @@
   });
   function play(name) {
     const a = sfx[name];
-    if (!a) return;
+    if (!a || !soundOn) return;
     a.currentTime = 0;
     a.play().catch((err) => console.warn('sfx', name, err.name));   // the browser may block it until the first click / key press
   }
+  /* background music (flute): loops, fades out while the film plays, and one button
+     turns the music and the sound effects on / off together */
+  const music = new Audio('leberch-flute-587281.mp3');
+  music.loop = true;
+  music.volume = 0;
+  const MUSIC_VOL = 0.35;
+  let soundOn = true, fadeTimer = 0;
+  const audioBtn = document.getElementById('audioToggle');
+  function fadeMusic(to, done) {
+    clearInterval(fadeTimer);
+    fadeTimer = setInterval(() => {
+      const d = to - music.volume;
+      music.volume = Math.abs(d) < 0.02 ? to : music.volume + Math.sign(d) * 0.02;
+      if (music.volume === to) { clearInterval(fadeTimer); if (done) done(); }
+    }, 50);
+  }
+  function updateMusic() {
+    const filmPlaying = root.classList.contains('is-watching') || (video && !video.paused);
+    const want = soundOn && !filmPlaying && !isFlow();
+    if (want) {
+      music.play().then(() => fadeMusic(MUSIC_VOL)).catch(() => {});   // blocked until the first click / key press
+    } else if (!music.paused) {
+      fadeMusic(0, () => music.pause());
+    }
+  }
+  function setAudio(on) {
+    soundOn = on;
+    audioBtn.classList.toggle('is-off', !on);
+    audioBtn.setAttribute('aria-pressed', String(on));
+    audioBtn.setAttribute('aria-label', on ? 'Turn sound off' : 'Turn sound on');
+    audioBtn.querySelector('.audio-toggle__text').textContent = on ? 'Sound on' : 'Sound off';
+    updateMusic();
+  }
+  audioBtn.addEventListener('click', () => setAudio(!soundOn));
+  ['pointerdown', 'keydown'].forEach((t) => window.addEventListener(t, updateMusic, { passive: true }));   // first gesture starts the music
+
   const BTN = 'button:not(:disabled), a[href], [data-goto]';
   document.addEventListener('mouseover', (e) => {
     const b = e.target.closest && e.target.closest(BTN);
@@ -128,6 +164,13 @@
     walk(block);
   });
 
+  /* which side of the screen a picture stands on (pictures in the middle have none) */
+  document.querySelectorAll('.slide:not(.cover) .photo').forEach((p) => {
+    const cx = parseFloat(p.style.getPropertyValue('--x')) + parseFloat(p.style.getPropertyValue('--w')) / 2;
+    if (cx < 800) p.dataset.side = 'l';
+    else if (cx > 1200) p.dataset.side = 'r';
+  });
+
   /* ---------- Photos: hover shows the caption, click opens the picture full screen ---------- */
   const lightbox = document.getElementById('lightbox');
   const lbImg = document.getElementById('lightboxImg');
@@ -197,7 +240,8 @@
     b.type = 'button';
     b.setAttribute('aria-label', s.dataset.label);
     b.innerHTML = `<span class="dot__label">${s.dataset.label}</span>`;
-    b.addEventListener('click', () => go(i, 0));
+    b.addEventListener('click', () => { b.classList.add('is-picked'); go(i, 0); });
+    b.addEventListener('mouseleave', () => b.classList.remove('is-picked'));
     dotsEl.appendChild(b);
     milestones.push({ index: i, el: b });
   });
@@ -327,6 +371,8 @@
   let leaveTimer = 0;
   function render(toSec, toSl, fromSec, instant) {
     const fromSlide = slidesOf[sec][sl];
+    let moving = false;
+    if (instant) delete root.dataset.move;
     if (videoSlide && slidesOf[toSec][toSl] !== videoSlide) hideVideo();
     const toSlide = slidesOf[toSec][toSl];
 
@@ -334,6 +380,10 @@
       document.querySelectorAll('.section, .slide').forEach((el) => el.classList.add('no-anim'));
     } else {
       root.dataset.dir = toSec > fromSec ? 'down' : toSec < fromSec ? 'up' : toSl > sl ? 'right' : 'left';
+      // two story pages of the same chapter: pictures slip off / in from their own sides
+      const story = (el) => !el.classList.contains('cover') && !el.classList.contains('has-video');
+      moving = toSec === fromSec && !!sections[toSec].dataset.label && fromSlide !== slidesOf[toSec][toSl] && story(fromSlide) && story(slidesOf[toSec][toSl]) && !still.matches;
+      if (moving) root.dataset.move = 'slide'; else delete root.dataset.move;
       void document.body.offsetHeight;   // incoming photos take their start offset before they move
       clearTimeout(leaveTimer);
       document.querySelectorAll('.is-leaving').forEach((el) => el.classList.remove('is-leaving'));
@@ -341,7 +391,7 @@
         fromSlide.classList.add('is-leaving');
         if (fromSec !== toSec) sections[fromSec].classList.add('is-leaving');
         leaveTimer = setTimeout(() =>
-          document.querySelectorAll('.is-leaving').forEach((el) => el.classList.remove('is-leaving')), DURATION + 200);
+          document.querySelectorAll('.is-leaving').forEach((el) => el.classList.remove('is-leaving')), moving ? 2200 : DURATION + 200);
       }
     }
 
@@ -368,7 +418,7 @@
     sec = toSec;
     sl = toSl;
     updateUI();
-    return wait;
+    return moving ? 2000 : wait;
   }
 
   function updateUI() {
@@ -418,6 +468,7 @@
     root.classList.add('is-watching');
     video.muted = false;                                    // with sound when the browser allows it,
     video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });   // otherwise silent
+    updateMusic();
     updateUI();
   }
   // a scroll does not count as a "click" for the browser, so it may start the film silent:
@@ -434,6 +485,9 @@
       soundBtn.setAttribute('aria-label', video.muted ? 'Turn sound on' : 'Turn sound off');
     };
     video.addEventListener('volumechange', sync);
+    ['play', 'pause', 'ended'].forEach((t) => video.addEventListener(t, updateMusic));
+    // when the film is over the text comes back (no loop); the next scroll plays it again from the start
+    video.addEventListener('ended', () => { hideVideo(); video.currentTime = 0; updateUI(); });
     sync();
     soundBtn.addEventListener('click', (e) => { e.stopPropagation(); setSound(video.muted); });
     video.addEventListener('click', () => { if (revealed()) setSound(true); });
@@ -443,6 +497,7 @@
     videoSlide.classList.remove('is-revealed');
     root.classList.remove('is-watching');
     video.pause();
+    updateMusic();
   }
   const onVideoSlide = () => videoSlide && slidesOf[sec][sl] === videoSlide;
 
@@ -490,7 +545,8 @@
      shows up as the delta rising again (or after a short pause). A step asked for while a
      transition is still running is remembered and runs as soon as it ends, so one scroll
      is always enough. */
-  let lastWheel = 0, lastMag = 0, peak = 0, rising = 0, faded = false, armed = true, pending = null, pendingAt = 0;
+  const WHEEL_MIN = 90;                // how much wheel / trackpad push counts as one scroll
+  let acc = 0, lastWheel = 0, lastMag = 0, peak = 0, rising = 0, faded = false, armed = true, pending = null, pendingAt = 0;
   function unlockAfter(ms) {
     setTimeout(() => {
       locked = false;
@@ -513,12 +569,17 @@
     // a pause starts a new gesture; so does the push growing again after the last one faded
     rising = mag > lastMag * 1.15 + 1 ? rising + 1 : 0;
     if (mag < peak * 0.6) faded = true;
-    if (gap > 160) { armed = true; peak = 0; }
+    if (gap > 160) { armed = true; peak = 0; acc = 0; }
     else if (!armed && faded && rising >= 2) armed = true;
     lastWheel = now;
     lastMag = mag;
     peak = Math.max(peak, mag);
-    if (!armed || mag < 4) return;                        // tiny first events keep it armed
+    if (!armed) return;
+    // a light touch is not a scroll: the push has to add up to a real movement first
+    if (acc && Math.sign(acc) !== Math.sign(delta)) acc = 0;
+    acc += delta;
+    if (Math.abs(acc) < WHEEL_MIN) return;
+    acc = 0;
     armed = false;
     faded = false;
     peak = mag;
@@ -570,6 +631,7 @@
   }
   scaleStage();
   setFlowMode();
+  updateMusic();
   window.addEventListener('resize', scaleStage);
   flowQuery.addEventListener('change', setFlowMode);
 })();
