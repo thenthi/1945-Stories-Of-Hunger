@@ -249,10 +249,10 @@
   /* ---------- Timeline roll: between two stories the milestones scroll past in one continuous
      run (fast, then slowing down) and settle on the new story's topic, like the year column of
      the UN Women timeline. Only then do the story's pictures come in. ---------- */
-  const ENTER = 2850;                  // shorter roll into the first story
-  const ROLL = 2950;                   // ms until the new story's content starts to appear
-  const COPIES = 5;                    // the list repeats so every roll passes several milestones
-  const RUN = 12;                      // at least this many milestones go by
+  const ENTER = 3270;                  // shorter roll into the first story
+  const ROLL = 3370;                   // ms until the new story's content starts to appear
+  const COPIES = 11;                   // the list repeats so every roll passes several milestones
+  const RUN = 24;                      // at least this many milestones go by
   const topics = milestones.map((m) => {
     const title = sections[m.index].querySelector('.cover .title, .title');
     const text = title ? title.textContent.replace(/\s+/g, ' ').trim() : '';   // one line, even if the title breaks
@@ -274,8 +274,8 @@
   // milestones that follow it rise from below, and it stops in the middle
   function roll(from, to, onDone, entering = false) {
     const n = milestones.length;
-    const target = 2 * n + to;                               // stop in the middle copy
-    const dist = Math.min(2 * n, Math.max(RUN, Math.abs(to - from)));
+    const target = 5 * n + to;                               // stop in the middle copy
+    const dist = Math.min(5 * n, Math.max(RUN, Math.abs(to - from)));
     const start = entering ? target - 2.6 : target + (to >= from ? -dist : dist);
     rollTimers.forEach(clearTimeout);
     items.forEach((it, i) => {
@@ -290,7 +290,7 @@
     root.classList.add('is-rolling');
     rollTimers = [
       setTimeout(() => { play('scroll'); timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),   // the sound and the roll start together; its last hit lands with the roll
-      setTimeout(() => items[target].classList.add('is-current'), 2050),   // grows as it arrives, on the last hit of the scroll sound
+      setTimeout(() => items[target].classList.add('is-current'), 2320),   // grows as it arrives, on the last hit of the scroll sound
       setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, entering ? ENTER : ROLL),
     ];
   }
@@ -336,7 +336,10 @@
     // in step with the timeline roll when changing story: same length, fast start, slow finish
     const rolling = root.classList.contains('is-rolling');
     const dur = rolling ? 2300 : 1400;
-    const ease = (t) => -(Math.cos(Math.PI * t) - 1) / 2;   // gentle start and finish, no jolt
+    const soft = (t) => -(Math.cos(Math.PI * t) - 1) / 2;   // gentle start and finish, no jolt
+    // changing story: fast at the start, slow at the end (same curve as the timeline roll)
+    const steady = (t) => 1 - Math.pow(1 - t, 2.4);
+    const ease = rolling ? steady : soft;
     const fromY = markerY;
     markerDelay = setTimeout(() => {
       const t0 = performance.now();
@@ -400,7 +403,7 @@
     const rolling = !instant && toSec !== fromSec && to >= 0 && !still.matches;
     let wait = DURATION;
     if (rolling) {
-      const entering = msIndex(fromSec) < 0 && toSec > fromSec;
+      const entering = false;   // the first story rolls in like every other one
       const from = msIndex(fromSec) >= 0 ? msIndex(fromSec) : to + (toSec > fromSec ? -1 : 1);
       roll(from, to, () => toSlide.classList.add('is-active'), entering);
       wait = (entering ? ENTER : ROLL) + 600;

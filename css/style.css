@@ -599,8 +599,8 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   top: 432px;                                        /* centre of the 1125px stage minus half an item */
   transform: translateY(calc(var(--at, 0) * -260px));
 }
-/* one continuous run: starts fast, slows down and settles on the topic */
-.timeline.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.12, .6, .15, 1); }
+/* one continuous run: very fast at the start, slowing down to settle on the topic with the last hit of the sound */
+.timeline.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.2, .5, .4, 1); transition-timing-function: linear(0.000, 0.223 10%, 0.415 20%, 0.575 30%, 0.707 40%, 0.811 50%, 0.889 60%, 0.944 70%, 0.979 80%, 0.996 90%, 1.000); }
 .timeline__item {
   position: relative;
   height: 260px;
@@ -614,7 +614,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   text-shadow: 0 2px 14px rgba(20, 12, 6, .55);
   opacity: .28;
   transform: scale(.6);
-  transition: opacity .6s ease, transform .9s var(--ease);
+  transition: opacity .3s ease, transform .45s cubic-bezier(.35, 0, .2, 1);   /* grows smoothly and is done when the scroll sound ends (it starts at 2.3s, the sound ends at ~2.75s) */
 }
 .timeline__date { font-size: 34px; letter-spacing: .12em; text-transform: uppercase; }
 .timeline__topic { font-family: var(--font-title); font-size: 96px; line-height: 1; text-transform: uppercase; text-align: center; }
@@ -632,7 +632,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .timeline__item.is-current { opacity: 1; transform: none; }
 .timeline__item.is-hidden { visibility: hidden; }
 /* first story: rises from below, slower and calmer */
-.timeline.is-entering.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.22, .6, .25, 1); }
+.timeline.is-entering.is-rolling .timeline__track { transition: transform 2.3s cubic-bezier(.2, .5, .4, 1); transition-timing-function: linear(0.000, 0.223 10%, 0.415 20%, 0.575 30%, 0.707 40%, 0.811 50%, 0.889 60%, 0.944 70%, 0.979 80%, 0.996 90%, 1.000); }
 .is-rolling .pager, .is-rolling .next { opacity: 0 !important; pointer-events: none; }
 
 /* ---------- Chapter title card (story covers, built by js/main.js) ---------- */
@@ -644,7 +644,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .chapter-card__num {
   position: absolute;
   left: -14px;
-  bottom: calc(100% - 40px);
+  bottom: calc(100% + 45px);   /* old-style digits hang below the baseline: keep their tails clear of the line under them */
   font-family: var(--font-title);
   font-size: 400px;
   line-height: .8;
@@ -1034,7 +1034,7 @@ html.is-flow .site-nav__brand { font-size: 15px; }
   margin: 30px auto 44px;
   background: #d8c3a0;
 }
-.conseq__text { max-width: 980px; font-size: 28px; line-height: 1.6; }
+.conseq__text { max-width: 1050px; font-size: 28px; line-height: 1.6; }
 .conseq__text p + p { margin-top: 1.1em; }
 html.is-flow .conseq { height: auto; }
 
