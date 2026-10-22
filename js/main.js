@@ -21,6 +21,29 @@
 
   const isFlow = () => root.classList.contains('is-flow');
 
+  /* ---------- Sound effects: scroll = the milestone years rolling, hover = any button, choose = click ---------- */
+  const sfx = {};
+  ['scroll', 'hover', 'choose'].forEach((name) => {
+    const a = new Audio(`${name}.m4a`);
+    a.preload = 'auto';
+    sfx[name] = a;
+  });
+  function play(name) {
+    const a = sfx[name];
+    if (!a) return;
+    a.currentTime = 0;
+    a.play().catch(() => {});          // the browser may block it until the first click / key press
+  }
+  const BTN = 'button:not(:disabled), a[href], [data-goto]';
+  document.addEventListener('mouseover', (e) => {
+    const b = e.target.closest && e.target.closest(BTN);
+    if (b && !(e.relatedTarget && b.contains(e.relatedTarget))) play('hover');
+  });
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest(`${BTN}, .photo.is-zoomable.is-hover, .lightbox`);
+    if (t) play('choose');
+  });
+
   /* ---------- Photo placeholders ---------- */
   document.querySelectorAll('.photo img, .card__bg').forEach((img) => {
     const file = img.getAttribute('src');
@@ -221,6 +244,7 @@
     void timeline.offsetHeight;        // jump to the start without animating
     timeline.classList.add('is-on');
     root.classList.add('is-rolling');
+    play('scroll');
     rollTimers = [
       setTimeout(() => { timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),
       setTimeout(() => items[target].classList.add('is-current'), entering ? 2000 : 3600),   // grows as it arrives
