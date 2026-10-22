@@ -24,7 +24,7 @@
   /* ---------- Sound effects: scroll = the milestone years rolling, hover = any button, choose = click ---------- */
   const sfx = {};
   ['scroll', 'hover', 'choose'].forEach((name) => {
-    const a = new Audio(`${name}.m4a`);
+    const a = new Audio(`${name}.wav`);
     a.preload = 'auto';
     sfx[name] = a;
   });
@@ -32,7 +32,7 @@
     const a = sfx[name];
     if (!a) return;
     a.currentTime = 0;
-    a.play().catch(() => {});          // the browser may block it until the first click / key press
+    a.play().catch((err) => console.warn('sfx', name, err.name));   // the browser may block it until the first click / key press
   }
   const BTN = 'button:not(:disabled), a[href], [data-goto]';
   document.addEventListener('mouseover', (e) => {
