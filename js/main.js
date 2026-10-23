@@ -141,7 +141,7 @@
   });
 
   /* ---------- Words: wrap each word so the text can rise in word by word ---------- */
-  const TEXT = '.title, .kicker, .panel__year, .panel__date, .panel__title, .text p, .panel__text p, .scroll__paper p, .chapter-card__lede, .quote__text, .quote__trans';
+  const TEXT = '.title, .kicker, .panel__year, .panel__date, .panel__title, .text p, .panel__text p, .chapter-card__lede';
   document.querySelectorAll(TEXT).forEach((block) => {
     if (block.closest('.w-done')) return;
     block.classList.add('w-done');
@@ -249,7 +249,6 @@
   /* ---------- Timeline roll: between two stories the milestones scroll past in one continuous
      run (fast, then slowing down) and settle on the new story's topic, like the year column of
      the UN Women timeline. Only then do the story's pictures come in. ---------- */
-  const ENTER = 3270;                  // shorter roll into the first story
   const ROLL = 3370;                   // ms until the new story's content starts to appear
   const COPIES = 11;                   // the list repeats so every roll passes several milestones
   const RUN = 24;                      // at least this many milestones go by
@@ -270,19 +269,13 @@
   const msIndex = (i) => milestones.findIndex((m) => m.index === i);
   let rollTimers = [];
 
-  // entering the first story from the prologue: nothing above it; the story's title and the
-  // milestones that follow it rise from below, and it stops in the middle
-  function roll(from, to, onDone, entering = false) {
+  function roll(from, to, onDone) {
     const n = milestones.length;
     const target = 5 * n + to;                               // stop in the middle copy
     const dist = Math.min(5 * n, Math.max(RUN, Math.abs(to - from)));
-    const start = entering ? target - 2.6 : target + (to >= from ? -dist : dist);
+    const start = target + (to >= from ? -dist : dist);
     rollTimers.forEach(clearTimeout);
-    items.forEach((it, i) => {
-      it.classList.remove('is-current');
-      it.classList.toggle('is-hidden', entering && (i < target || i >= target + n - to));
-    });
-    timeline.classList.toggle('is-entering', entering);
+    items.forEach((it) => it.classList.remove('is-current'));
     timeline.classList.remove('is-rolling');
     timeline.style.setProperty('--at', start);
     void timeline.offsetHeight;        // jump to the start without animating
@@ -291,7 +284,7 @@
     rollTimers = [
       setTimeout(() => { play('scroll'); timeline.classList.add('is-rolling'); timeline.style.setProperty('--at', target); }, 250),   // the sound and the roll start together; its last hit lands with the roll
       setTimeout(() => items[target].classList.add('is-current'), 2320),   // grows as it arrives, on the last hit of the scroll sound
-      setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, entering ? ENTER : ROLL),
+      setTimeout(() => { timeline.classList.remove('is-on'); root.classList.remove('is-rolling'); onDone(); }, ROLL),
     ];
   }
 
@@ -403,10 +396,9 @@
     const rolling = !instant && toSec !== fromSec && to >= 0 && !still.matches;
     let wait = DURATION;
     if (rolling) {
-      const entering = false;   // the first story rolls in like every other one
       const from = msIndex(fromSec) >= 0 ? msIndex(fromSec) : to + (toSec > fromSec ? -1 : 1);
-      roll(from, to, () => toSlide.classList.add('is-active'), entering);
-      wait = (entering ? ENTER : ROLL) + 600;
+      roll(from, to, () => toSlide.classList.add('is-active'));
+      wait = ROLL + 600;
     }
 
     sections.forEach((s, i) => s.classList.toggle('is-active', i === toSec));

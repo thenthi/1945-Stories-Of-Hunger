@@ -1,5 +1,5 @@
 /* 1945: Stories of Hunger — hand-made looking decorations drawn as SVG:
-   torn & burnt photo frames, parchment scrolls, froth/coffee stains.
+   torn & burnt photo frames.
    Every shape is generated from a seed, so it looks the same on every visit. */
 (function () {
   let uid = 0;
@@ -206,78 +206,6 @@
     photo.style.setProperty('--scorch', svgUrl(scorch));
   }
 
-  /* ---------------------------------------------------------
-     Parchment scroll: paper images in assets/scrolls (see css .scroll).
-     Wide, short boxes get the long strip so its edges are not squashed.
-     --------------------------------------------------------- */
-  function buildScroll(scroll) {
-    const W = num(scroll, '--w'), H = num(scroll, '--h');
-    scroll.querySelector('.scroll__roll')?.remove();
-    if (W && H) scroll.classList.toggle('scroll--wide', W / H >= 2.5);
-  }
-
-  /* ---------------------------------------------------------
-     Stains: white salt-froth blots, optionally over a coffee ring
-     --------------------------------------------------------- */
-  const CORNERS = { tl: [0, 0], tr: [1, 0], bl: [0, 1], br: [1, 1], t: [0.5, 0], b: [0.5, 1], l: [0, 0.5], r: [1, 0.5] };
-
-  function buildStain(stain, index) {
-    const w0 = num(stain, '--w'), h0 = num(stain, '--h');
-    if (!w0 || !h0) return;
-    const [cx, cy] = CORNERS[stain.dataset.corner] || CORNERS.tl;
-    // grow the box outwards past the screen edge so the blot never ends in a straight line
-    const E = 320;
-    const left = cx === 0 ? E : 0, top = cy === 0 ? E : 0;
-    const W = w0 + (cx !== 0.5 ? E : 0), H = h0 + (cy !== 0.5 ? E : 0);
-    stain.style.left = `${num(stain, '--x') - left}px`;
-    stain.style.top = `${num(stain, '--y') - top}px`;
-    stain.style.width = `${W}px`;
-    stain.style.height = `${H}px`;
-    const gx = left + cx * w0, gy = top + cy * h0;        // the original corner
-    const radius = Math.max(w0, h0) * 0.95;
-    const coffee = stain.dataset.stain === 'coffee';
-    const seed = 7 + index * 13;
-    const min = Math.min(w0, h0);
-    const id = `f${++uid}`;
-    const freq = (7 / min).toFixed(4);
-
-    // alpha = noise + corner gradient, then sharpened -> blobby, ragged shape
-    const blob = (fid, k3, k4, color, extra = '') => `<filter id="${fid}" x="0" y="0" width="100%" height="100%">
-      <feTurbulence type="fractalNoise" baseFrequency="${freq}" numOctaves="5" seed="${seed}" result="n"/>
-      <feColorMatrix in="n" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.5 0 0 0 -.25" result="na"/>
-      <feComposite in="na" in2="SourceGraphic" operator="arithmetic" k2="1" k3="${k3}" k4="${k4}" result="sum"/>
-      <feGaussianBlur in="sum" stdDeviation="1.5" result="sumb"/>
-      <feComponentTransfer in="sumb" result="shape"><feFuncA type="linear" slope="7" intercept="-.4"/></feComponentTransfer>
-      ${extra}
-    </filter>`;
-
-    const froth = blob(`${id}w`, 1.15, -0.95, '#f6f1e8', `
-      <feTurbulence type="fractalNoise" baseFrequency="${(45 / min).toFixed(4)}" numOctaves="2" seed="${seed + 3}" result="bn"/>
-      <feColorMatrix in="bn" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 12 0 0 0 -8.3" result="holes"/>
-      <feComposite in="shape" in2="holes" operator="out" result="foam"/>
-      <feGaussianBlur in="foam" stdDeviation="2.2" result="soft"/>
-      <feFlood flood-color="#a88d70" flood-opacity=".55"/><feComposite in2="soft" operator="in" result="rim"/>
-      <feComposite in="foam" in2="SourceGraphic" operator="arithmetic" k1=".75" k2=".4" result="foamSoft"/>
-      <feFlood flood-color="#f7f2ea"/><feComposite in2="foamSoft" operator="in" result="white"/>
-      <feMerge><feMergeNode in="rim"/><feMergeNode in="white"/></feMerge>`);
-
-    const ring = coffee ? blob(`${id}c`, 1.45, -0.95, '', `
-      <feMorphology in="shape" operator="erode" radius="5" result="inner"/>
-      <feComposite in="shape" in2="inner" operator="out" result="edge"/>
-      <feFlood flood-color="#b47c45" flood-opacity=".35"/><feComposite in2="shape" operator="in" result="fill"/>
-      <feFlood flood-color="#8a5126" flood-opacity=".55"/><feComposite in2="edge" operator="in" result="line"/>
-      <feMerge><feMergeNode in="fill"/><feMergeNode in="line"/></feMerge>`) : '';
-
-    stain.innerHTML = `<svg viewBox="0 0 ${f1(W)} ${f1(H)}" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <radialGradient id="${id}g" gradientUnits="userSpaceOnUse" cx="${f1(gx)}" cy="${f1(gy)}" r="${f1(radius)}"><stop offset="0" stop-color="#fff"/><stop offset=".9" stop-color="#fff" stop-opacity="0"/></radialGradient>
-        ${froth}${ring}
-      </defs>
-      ${coffee ? `<rect width="100%" height="100%" fill="url(#${id}g)" filter="url(#${id}c)"/>` : ''}
-      <rect width="100%" height="100%" fill="url(#${id}g)" filter="url(#${id}w)"/>
-    </svg>`;
-  }
-
   document.querySelectorAll('.photo').forEach(buildPhoto);
 
   /* .photo--fill: the photo fills its box (cropped) inside a drawn torn frame. It is zoomed
@@ -289,6 +217,4 @@
     img.replaceWith(crop);
     crop.appendChild(img);
   });
-  document.querySelectorAll('.scroll').forEach(buildScroll);
-  document.querySelectorAll('.stain').forEach(buildStain);
 })();
