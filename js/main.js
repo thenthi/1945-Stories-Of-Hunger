@@ -51,7 +51,7 @@
     }, 50);
   }
   function updateMusic() {
-    const filmPlaying = root.classList.contains('is-watching') || (video && !video.paused);
+    const filmPlaying = !!video && !video.paused;
     const want = soundOn && !filmPlaying && !isFlow();
     if (want) {
       music.play().then(() => fadeMusic(MUSIC_VOL)).catch(() => {});   // blocked until the first click / key press
@@ -453,10 +453,12 @@
   }
 
   /* ---------- Video behind the last page ----------
-     Arriving: the video sits blurred and paused behind the text. One more scroll:
-     the text fades away, the video comes into focus and plays. Scrolling back undoes it. */
+     Arriving: the film sits blurred and paused behind the text. One more scroll: the text fades,
+     the film comes into focus and plays, with its own controls under it (play / pause, seek bar,
+     mute, full screen). Scrolling back undoes it. */
   const videoSlide = document.querySelector('.slide.has-video');
-  const video = videoSlide && videoSlide.querySelector('.bg-video');
+  const player = document.getElementById('player');
+  const video = videoSlide && videoSlide.querySelector('.bg-video');   // the one film, in a box behind the text
   const revealed = () => !!videoSlide && videoSlide.classList.contains('is-revealed');
   function revealVideo() {
     videoSlide.classList.add('is-revealed');
@@ -466,26 +468,52 @@
     updateMusic();
     updateUI();
   }
-  // a scroll does not count as a "click" for the browser, so it may start the film silent:
-  // the sound button (or a click anywhere on the film) turns the sound on / off
-  const soundBtn = videoSlide && videoSlide.querySelector('.sound');
-  function setSound(on) {
-    video.muted = !on;
-    if (on) video.play().catch(() => {});
-  }
   if (video) {
-    const sync = () => {
-      soundBtn.classList.toggle('is-on', !video.muted);
-      soundBtn.querySelector('.sound__text').textContent = video.muted ? 'Sound on' : 'Sound off';
-      soundBtn.setAttribute('aria-label', video.muted ? 'Turn sound on' : 'Turn sound off');
+    const seek = document.getElementById('playerSeek');
+    const timeEl = document.getElementById('playerTime');
+    const durEl = document.getElementById('playerDur');
+    const clock = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    let scrubbing = false;
+    const toggle = () => (video.paused ? video.play().catch(() => {}) : video.pause());
+    const paint = () => {
+      const f = video.duration ? video.currentTime / video.duration : 0;
+      if (!scrubbing) seek.value = Math.round(f * 1000);
+      seek.style.setProperty('--p', `${(seek.value / 10).toFixed(1)}%`);
+      timeEl.textContent = clock(video.currentTime);
     };
-    video.addEventListener('volumechange', sync);
-    ['play', 'pause', 'ended'].forEach((t) => video.addEventListener(t, updateMusic));
+    const ready = () => { durEl.textContent = clock(video.duration); paint(); };
+    video.addEventListener('loadedmetadata', ready);
+    if (video.readyState >= 1) ready();
+    video.addEventListener('timeupdate', paint);
+    ['play', 'pause', 'ended'].forEach((t) => video.addEventListener(t, () => {
+      player.classList.toggle('is-playing', !video.paused && !video.ended);
+      updateMusic();
+    }));
     // when the film is over the text comes back (no loop); the next scroll plays it again from the start
     video.addEventListener('ended', () => { hideVideo(); video.currentTime = 0; updateUI(); });
-    sync();
-    soundBtn.addEventListener('click', (e) => { e.stopPropagation(); setSound(video.muted); });
-    video.addEventListener('click', () => { if (revealed()) setSound(true); });
+    video.addEventListener('volumechange', () => {
+      player.classList.toggle('is-muted', video.muted || video.volume === 0);
+      player.querySelector('.player__mute').setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
+    });
+    player.classList.toggle('is-muted', video.muted);
+    player.querySelector('.player__play').addEventListener('click', toggle);
+    video.addEventListener('click', toggle);
+    player.querySelector('.player__mute').addEventListener('click', () => { video.muted = !video.muted; });
+    seek.addEventListener('input', () => {
+      scrubbing = true;
+      if (video.duration) video.currentTime = (seek.value / 1000) * video.duration;
+      paint();
+    });
+    seek.addEventListener('change', () => { scrubbing = false; });
+    player.querySelector('.player__full').addEventListener('click', () => {
+      const full = document.fullscreenElement || document.webkitFullscreenElement;
+      if (full) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else if (video.requestFullscreen) video.requestFullscreen();
+      else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    });
+    // full screen is the browser's own, so it brings its own controls with it
+    document.addEventListener('fullscreenchange', () => { video.controls = !!document.fullscreenElement || isFlow(); });
+    player.addEventListener('keydown', (e) => e.stopPropagation());   // arrows / space belong to the player's own controls
   }
   function hideVideo() {
     if (!videoSlide) return;

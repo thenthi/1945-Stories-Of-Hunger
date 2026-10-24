@@ -441,15 +441,35 @@
   <section class="section paper-dark" data-anchor="consequences">
     <div class="track">
       <article class="slide has-video">
-        <!-- Video phía sau chữ: lúc đầu mờ & dừng; cuộn thêm 1 lần thì chữ biến mất, video rõ và tự chạy -->
-        <video class="bg-video" src="assets/video/consequences.mp4" muted playsinline preload="auto" aria-label="Archive footage of the 1945 famine"></video>
-        <button class="sound" type="button" aria-label="Turn sound on"><span class="sound__icon" aria-hidden="true"></span><span class="sound__text">Sound on</span></button>
+        <!-- Video phía sau chữ: lúc đầu mờ & dừng; cuộn thêm 1 lần thì chữ biến mất, khung video nhỏ hiện ra (có play / pause, tua) và nền mờ chạy theo -->
+        <video class="bg-video" src="assets/video/consequences.mp4#t=0.1" muted playsinline preload="metadata" aria-label="Archive footage of the 1945 famine"></video>
         <div class="stage">
           <div class="layer conseq" style="--x:450;--y:0;--w:1100;--h:1125">
             <h2 class="title center conseq__title" data-anim>CONSEQUENCES</h2>
             <div class="text center conseq__text" data-anim>
               <p>The famine left losses that went far beyond a number of deaths. Thousands of families lost loved ones, communities were deeply affected, and many people were forced to leave their homes. The famine also contributed to growing social dissatisfaction and became an important part of the historical context leading to the August Revolution of 1945.</p>
               <p>Yet when we look back at history, the famine is often remembered through numbers, dates and events. The story of To Minh Thuyet allows us to see what existed behind those numbers: a family, a mother, a child, a father who never returned — and thousands of other families who experienced similar suffering.</p>
+            </div>
+          </div>
+        </div>
+        <div class="stage stage--player">
+          <!-- Video player: a framed box with its own play / pause, seek bar, mute and full-screen buttons -->
+          <div class="layer player" id="player" style="--x:300;--y:968;--w:1400">
+            <div class="player__bar">
+              <button class="player__btn player__play" type="button" aria-label="Play">
+                <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+                <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+              </button>
+              <span class="player__time" id="playerTime">0:00</span>
+              <input class="player__seek" id="playerSeek" type="range" min="0" max="1000" step="1" value="0" aria-label="Seek in video">
+              <span class="player__time" id="playerDur">0:00</span>
+              <button class="player__btn player__mute" type="button" aria-label="Mute">
+                <svg class="i-vol" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <svg class="i-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </button>
+              <button class="player__btn player__full" type="button" aria-label="Full screen">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
             </div>
           </div>
         </div>
