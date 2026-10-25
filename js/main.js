@@ -51,7 +51,7 @@
     }, 50);
   }
   function updateMusic() {
-    const filmPlaying = !!video && !video.paused;
+    const filmPlaying = !!video && revealed() && !video.paused;   // the silent backdrop does not stop the music
     const want = soundOn && !filmPlaying && !isFlow();
     if (want) {
       music.play().then(() => fadeMusic(MUSIC_VOL)).catch(() => {});   // blocked until the first click / key press
@@ -369,7 +369,10 @@
     const fromSlide = slidesOf[sec][sl];
     let moving = false;
     if (instant) delete root.dataset.move;
-    if (videoSlide && slidesOf[toSec][toSl] !== videoSlide) hideVideo();
+    if (video) {
+      if (slidesOf[toSec][toSl] !== videoSlide) hideVideo(true);        // leaving the video page
+      else if (!revealed()) playBackdrop();                              // arriving: the film runs blurred and silent behind the text
+    }
     const toSlide = slidesOf[toSec][toSl];
 
     if (instant) {
@@ -453,16 +456,24 @@
   }
 
   /* ---------- Video behind the last page ----------
-     Arriving: the film sits blurred and paused behind the text. One more scroll: the text fades,
-     the film comes into focus and plays, with its own controls under it (play / pause, seek bar,
+     Arriving: the film plays blurred and silent behind the text. One more scroll: the text fades,
+     the film restarts from the beginning, comes into focus and plays with sound, with its own controls under it (play / pause, seek bar,
      mute, full screen). Scrolling back undoes it. */
   const videoSlide = document.querySelector('.slide.has-video');
   const player = document.getElementById('player');
   const video = videoSlide && videoSlide.querySelector('.bg-video');   // the one film, in a box behind the text
   const revealed = () => !!videoSlide && videoSlide.classList.contains('is-revealed');
+  // behind the text: the film loops, blurred and without sound
+  function playBackdrop() {
+    video.loop = true;
+    video.muted = true;
+    video.play().catch(() => {});
+  }
   function revealVideo() {
     videoSlide.classList.add('is-revealed');
     root.classList.add('is-watching');
+    video.loop = false;
+    video.currentTime = 0;                                  // the film starts again from the beginning
     video.muted = false;                                    // with sound when the browser allows it,
     video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });   // otherwise silent
     updateMusic();
@@ -490,7 +501,7 @@
       updateMusic();
     }));
     // when the film is over the text comes back (no loop); the next scroll plays it again from the start
-    video.addEventListener('ended', () => { hideVideo(); video.currentTime = 0; updateUI(); });
+    video.addEventListener('ended', () => { video.currentTime = 0; hideVideo(); updateUI(); });
     video.addEventListener('volumechange', () => {
       player.classList.toggle('is-muted', video.muted || video.volume === 0);
       player.querySelector('.player__mute').setAttribute('aria-label', video.muted ? 'Unmute' : 'Mute');
@@ -515,11 +526,12 @@
     document.addEventListener('fullscreenchange', () => { video.controls = !!document.fullscreenElement || isFlow(); });
     player.addEventListener('keydown', (e) => e.stopPropagation());   // arrows / space belong to the player's own controls
   }
-  function hideVideo() {
+  function hideVideo(leaving) {
     if (!videoSlide) return;
     videoSlide.classList.remove('is-revealed');
     root.classList.remove('is-watching');
-    video.pause();
+    if (leaving) video.pause();
+    else playBackdrop();                                    // back behind the text, blurred and silent
     updateMusic();
   }
   const onVideoSlide = () => videoSlide && slidesOf[sec][sl] === videoSlide;
